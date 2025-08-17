@@ -1,0 +1,307 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  STORE_OWNER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum StoreStatus {
+  OPEN
+  CLOSED_OPERATION_SMOKEOUT
+  CLOSED_OTHER
+  CLOSED_UNKNOWN
+  REOPENED
+}
+
+enum ProductType {
+  FLOWER
+  EDIBLE
+  CONCENTRATE
+  VAPE
+  ACCESSORY
+  OTHER
+}
+
+enum MessageType {
+  ADMIN_BROADCAST
+  USER_MESSAGE
+  SYSTEM_MESSAGE
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String?   @unique
+  password          String?   // null for OAuth users
+  firstName         String?
+  lastName          String?
+  avatar            String?
+  role              UserRole  @default(USER)
+  isEmailVerified   Boolean   @default(false)
+  emailVerifyToken  String?
+  resetPasswordToken String?
+  resetPasswordExpires DateTime?
+  
+  // Account status
+  isActive          Boolean   @default(true)
+  isSuspended       Boolean   @default(false)
+  suspendedAt       DateTime?
+  suspendedBy       String?   // Admin user ID who suspended
+  suspensionReason  String?
+  
+  // OAuth fields
+  googleId          String?   @unique
+  facebookId        String?   @unique
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastLoginAt       DateTime?
+  
+  // Relations
+  ownedStores       Store[]   @relation("StoreOwner")
+  comments          Comment[]
+  messages          Message[] @relation("MessageSender")
+  receivedMessages  Message[] @relation("MessageReceiver")
+  donations         Donation[]
+  claimRequests     ClaimRequest[]
+  newsArticles      NewsArticle[]
+  
+  @@map("users")
+}
+
+model Store {
+  id                String      @id @default(cuid())
+  name              String
+  address           String
+  latitude          Float
+  longitude         Float
+  phone             String?
+  email             String?
+  website           String?
+  description       String?
+  status            StoreStatus @default(OPEN)
+  
+  // Operation Smokeout specific
+  operationSmokeoutDate DateTime?
+  closureReason     String?
+  
+  // Store profile
+  profileImage      String?
+  gallery           String[]    // Array of image URLs
+  hours             Json?       // Store hours as JSON
+  
+  // Metadata
+  isVerified        Boolean     @default(false)
+  isClaimed         Boolean     @default(false)
+  
+  // Timestamps
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  owner             User?       @relation("StoreOwner", fields: [ownerId], references: [id])
+  ownerId           String?
+  comments          Comment[]
+  products          Product[]
+  claimRequests     ClaimRequest[]
+  advertisements    Advertisement[]
+  
+  @@map("stores")
+}
+
+model ClaimRequest {
+  id                String    @id @default(cuid())
+  userId            String
+  storeId           String
+  status            String    @default("pending") // pending, approved, rejected
+  businessLicense   String?   // URL to uploaded document
+  proofOfOwnership  String?   // URL to uploaded document
+  notes             String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  user              User      @relation(fields: [userId], references: [id])
+  store             Store     @relation(fields: [storeId], references: [id])
+  
+  @@unique([userId, storeId])
+  @@map("claim_requests")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  rating    Int?     @default(5) // 1-5 star rating
+  
+  userId    String
+  storeId   String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id])
+  store     Store    @relation(fields: [storeId], references: [id])
+  
+  @@map("comments")
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  type        ProductType
+  strain      String?     // For flower products
+  thcContent  Float?      // THC percentage
+  cbdContent  Float?      // CBD percentage
+  price       Float?
+  image       String?
+  
+  storeId     String
+  createdBy   String      // User ID who added this product
+  
+  isApproved  Boolean     @default(false)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  store       Store       @relation(fields: [storeId], references: [id])
+  
+  @@map("products")
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  content     String
+  type        MessageType @default(USER_MESSAGE)
+  
+  senderId    String?
+  receiverId  String?     // null for broadcasts
+  
+  isRead      Boolean     @default(false)
+  
+  createdAt   DateTime    @default(now())
+  expiresAt   DateTime    // For 1-year retention
+  
+  sender      User?       @relation("MessageSender", fields: [senderId], references: [id])
+  receiver    User?       @relation("MessageReceiver", fields: [receiverId], references: [id])
+  
+  @@map("messages")
+}
+
+model Advertisement {
+  id          String    @id @default(cuid())
+  title       String
+  content     String
+  imageUrl    String?
+  targetUrl   String?
+  
+  storeId     String?   // null for general ads
+  position    String    // header, sidebar, footer, etc.
+  
+  isActive    Boolean   @default(true)
+  startDate   DateTime
+  endDate     DateTime
+  
+  clickCount  Int       @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  store       Store?    @relation(fields: [storeId], references: [id])
+  
+  @@map("advertisements")
+}
+
+model Donation {
+  id            String   @id @default(cuid())
+  amount        Float
+  currency      String   @default("USD")
+  method        String   // paypal, bitcoin
+  transactionId String   @unique
+  
+  userId        String?
+  donorEmail    String?
+  donorName     String?
+  
+  status        String   @default("pending") // pending, completed, failed
+  
+  createdAt     DateTime @default(now())
+  
+  user          User?    @relation(fields: [userId], references: [id])
+  
+  @@map("donations")
+}
+
+model OnlineUser {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  socketId  String   @unique
+  lastSeen  DateTime @default(now())
+  
+  @@map("online_users")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  username  String   // Denormalized for performance
+  
+  createdAt DateTime @default(now())
+  
+  @@map("chat_messages")
+}
+
+model NewsArticle {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(255)
+  content     String   @db.Text
+  excerpt     String?  @db.VarChar(500)
+  slug        String   @unique @db.VarChar(255)
+  featuredImage String?
+  
+  isPublished Boolean  @default(false)
+  publishedAt DateTime?
+  
+  // SEO fields
+  metaTitle   String?  @db.VarChar(255)
+  metaDescription String? @db.VarChar(255)
+  
+  // Author
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("news_articles")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // CREATE, UPDATE, DELETE, SUSPEND, etc.
+  entity    String   // USER, STORE, NEWS, etc.
+  entityId  String
+  adminId   String   // Admin who performed the action
+  details   Json?    // Additional details about the action
+  ipAddress String?
+  userAgent String?
+  
+  createdAt DateTime @default(now())
+  
+  @@map("audit_logs")
+}
