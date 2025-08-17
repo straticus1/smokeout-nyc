@@ -1,0 +1,17 @@
+{
+    "name": "smokeout-nyc/database-scripts",
+    "description": "Database management scripts for SmokeoutNYC",
+    "type": "project",
+    "require": {
+        "php": "^8.0",
+        "vlucas/phpdotenv": "^5.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "SmokeoutNYC\\": "scripts/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

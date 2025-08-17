@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "collection_date": "2024-01-15T10:30:00Z",
+    "total_shops": 3,
+    "boroughs": {
+      "Manhattan": 1,
+      "Brooklyn": 1,
+      "Queens": 1,
+      "Bronx": 0,
+      "Staten Island": 0
+    },
+    "sources": ["Google Places API", "NYC Business Directory"]
+  },
+  "shops": [
+    {
+      "name": "NYC Smoke Shop",
+      "address": "123 Broadway, New York, NY 10001",
+      "borough": "Manhattan",
+      "latitude": 40.7589,
+      "longitude": -73.9851,
+      "phone": "+1 (212) 555-0123",
+      "website": "https://example-smoke-shop.com",
+      "hours": {
+        "Monday": "9:00 AM – 9:00 PM",
+        "Tuesday": "9:00 AM – 9:00 PM",
+        "Wednesday": "9:00 AM – 9:00 PM",
+        "Thursday": "9:00 AM – 9:00 PM",
+        "Friday": "9:00 AM – 10:00 PM",
+        "Saturday": "9:00 AM – 10:00 PM",
+        "Sunday": "10:00 AM – 8:00 PM"
+      },
+      "status": "OPEN",
+      "source": "Google Places API",
+      "business_type": "smoke_shop",
+      "last_updated": "2024-01-15T10:30:00Z"
+    },
+    {
+      "name": "Brooklyn Tobacco & More",
+      "address": "456 Flatbush Ave, Brooklyn, NY 11225",
+      "borough": "Brooklyn",
+      "latitude": 40.6892,
+      "longitude": -73.9442,
+      "phone": "+1 (718) 555-0456",
+      "website": null,
+      "hours": {
+        "Monday": "8:00 AM – 11:00 PM",
+        "Tuesday": "8:00 AM – 11:00 PM",
+        "Wednesday": "8:00 AM – 11:00 PM",
+        "Thursday": "8:00 AM – 11:00 PM",
+        "Friday": "8:00 AM – 12:00 AM",
+        "Saturday": "8:00 AM – 12:00 AM",
+        "Sunday": "9:00 AM – 10:00 PM"
+      },
+      "status": "OPEN",
+      "source": "NYC Business Directory",
+      "business_type": "licensed_tobacco",
+      "last_updated": "2024-01-15T10:30:00Z"
+    },
+    {
+      "name": "Queens Vape & Smoke",
+      "address": "789 Northern Blvd, Queens, NY 11372",
+      "borough": "Queens",
+      "latitude": 40.7282,
+      "longitude": -73.7949,
+      "phone": "+1 (718) 555-0789",
+      "website": "https://queens-vape.com",
+      "hours": {
+        "Monday": "10:00 AM – 9:00 PM",
+        "Tuesday": "10:00 AM – 9:00 PM",
+        "Wednesday": "10:00 AM – 9:00 PM",
+        "Thursday": "10:00 AM – 9:00 PM",
+        "Friday": "10:00 AM – 10:00 PM",
+        "Saturday": "10:00 AM – 10:00 PM",
+        "Sunday": "11:00 AM – 8:00 PM"
+      },
+      "status": "OPEN",
+      "source": "Google Places API",
+      "business_type": "vape_shop",
+      "last_updated": "2024-01-15T10:30:00Z"
+    }
+  ]
+}

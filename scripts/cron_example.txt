@@ -1,0 +1,17 @@
+# NYC Smoke Shop Database Update Cron Jobs
+# 
+# Add these entries to your crontab using: crontab -e
+# Make sure to update the paths to match your installation
+
+# Full data collection and import every Sunday at 2 AM
+0 2 * * 0 /Users/ryan/smokeout_nyc/scripts/update_database.sh --google-api-key=YOUR_API_KEY >> /var/log/smokeout_update.log 2>&1
+
+# Refresh mode (detect changes) every day at 6 AM
+0 6 * * * /Users/ryan/smokeout_nyc/scripts/update_database.sh --refresh --skip-collection >> /var/log/smokeout_refresh.log 2>&1
+
+# Weekly full refresh with data collection every Wednesday at 3 AM
+0 3 * * 3 /Users/ryan/smokeout_nyc/scripts/update_database.sh --refresh --google-api-key=YOUR_API_KEY >> /var/log/smokeout_weekly.log 2>&1
+
+# Alternative: Environment variable approach
+# Set GOOGLE_MAPS_API_KEY in your environment and use:
+# 0 2 * * 0 cd /Users/ryan/smokeout_nyc && ./scripts/update_database.sh --verbose >> /var/log/smokeout_update.log 2>&1
