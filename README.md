@@ -1,6 +1,6 @@
 # SmokeoutNYC v2.0
 
-A comprehensive web application for tracking smoke shop closures and Operation Smokeout enforcement in New York City.
+A comprehensive full-stack web application ecosystem for tracking smoke shop closures, Operation Smokeout enforcement, with advanced AI risk assessment, political engagement, and gamification features.
 
 ## Features
 
@@ -54,26 +54,67 @@ A comprehensive web application for tracking smoke shop closures and Operation S
 - **Instant Notifications**: Admin broadcasts and system alerts
 - **Socket.io Integration**: WebSocket-based real-time communication
 
-### 🏷️ Product Gallery
-- **Strain Database**: Searchable cannabis product catalog
-- **Store Integration**: Products linked to specific stores
-- **Admin Approval**: Moderated content system
-- **Advanced Search**: Filter by type, THC/CBD content, price
+### 🎮 Advanced Gaming System
+- **Cannabis Growing Simulation**: Plant strains, harvest products, manage grow operations
+- **Consumption Mechanics**: Realistic impairment system affecting gameplay
+- **Product Processing**: Convert harvested plants into various product types
+- **Market Dynamics**: Smoke shop and dealer sales with risk/reward mechanics
+- **Impairment Consequences**: Mistakes and reduced performance when impaired
+- **Premium Features**: Token-based and real-money premium upgrades
+- **Challenge System**: Daily/weekly challenges with rewards
+- **Loyalty Program**: Points and rewards for consistent gameplay
+- **Achievement System**: Unlockable achievements and progression tracking
+- **Economic Simulation**: Dynamic pricing and market conditions
+
+### 🤖 AI Risk Assessment Engine
+- **Dispensary Risk Analysis**: Multi-factor location risk assessment
+- **Enforcement Prediction**: Real-time enforcement activity tracking
+- **Regulatory Compliance**: Automated regulatory environment analysis
+- **Market Intelligence**: Competition analysis and demographic insights
+- **Nationwide Analytics**: State-by-state risk comparison and trends
+- **Real-time Alerts**: News monitoring and regulatory change notifications
+- **Membership Gating**: Tiered access based on subscription levels
+- **Batch Processing**: Multi-location risk assessments
+- **Historical Tracking**: Risk trend analysis and predictive modeling
+
+### 💰 Political Donation System
+- **Multi-Payment Processing**: Credit card and PayPal integration
+- **Political Campaign Integration**: Direct donations to politicians and campaigns
+- **Donor Privacy**: Anonymous and named donation options with FEC compliance
+- **Fee Transparency**: Processing fee breakdown and net amount calculation
+- **Campaign Finance Compliance**: Address collection for reporting requirements
+- **Donation Settings**: Per-politician customizable limits and messaging
+- **Financial Tracking**: Complete donation history and statistics
+
+### 🏷️ Product & Strain Database
+- **Comprehensive Strain Catalog**: Detailed cannabis strain information
+- **Store Integration**: Products linked to specific stores and locations
+- **Admin Approval**: Moderated content system with quality control
+- **Advanced Search**: Filter by type, THC/CBD content, price, effects
+- **User Reviews**: Community-driven product ratings and feedback
+- **Availability Tracking**: Real-time stock and availability updates
 
 ## Technology Stack
 
 ### Backend
 - **Node.js** with **Express.js** and **TypeScript**
+- **PHP** backend with comprehensive API system
 - **PostgreSQL** database with **Prisma ORM**
 - **Redis** for caching and session management
 - **Socket.io** for real-time features
-- **Passport.js** for authentication
-- **JWT** for secure token-based auth
+- **Multi-Provider OAuth2**: Google, Facebook, Microsoft, Twitter
+- **JWT** and **PHP Sessions** for authentication
+- **Advanced Game Engine**: Complex mechanics and state management
+- **AI Risk Engine**: Machine learning-powered risk assessments
 
 ### Frontend
 - **React.js** with **TypeScript**
-- **Tailwind CSS** for styling
-- **Google Maps API** / **Mapbox** for mapping
+- **Tailwind CSS** for responsive styling
+- **Universal Map System**: MapLibre GL, Google Maps, and Leaflet integration
+- **Headless UI** and **Heroicons** for accessible components
+- **React Hot Toast** for user notifications
+- **Axios** for API communication
+- **Context API** for state management
 - **Socket.io Client** for real-time features
 
 ### Infrastructure
@@ -141,6 +182,8 @@ Copy `env.example` to `.env` and configure:
 - `POST /api/auth/login` - User login
 - `GET /api/auth/google` - Google OAuth
 - `GET /api/auth/facebook` - Facebook OAuth
+- `GET /api/auth/microsoft` - Microsoft OAuth
+- `GET /api/auth/twitter` - Twitter OAuth
 - `POST /api/auth/forgot-password` - Password reset request
 - `POST /api/auth/reset-password` - Password reset confirmation
 
@@ -157,6 +200,57 @@ Copy `env.example` to `.env` and configure:
 - `POST /api/news/admin` - Create article (admin)
 - `PUT /api/news/admin/:id` - Update article (admin)
 - `DELETE /api/news/admin/:id` - Delete article (admin)
+
+### Game Endpoints
+- `GET /api/game/player` - Get player profile and stats
+- `GET /api/game/strains` - Get available strains for player level
+- `POST /api/game/plants` - Plant new seed
+- `PUT /api/game/plants/:id` - Harvest plant
+- `GET /api/game/locations` - Get available growing locations
+- `POST /api/game/sales` - Sell harvested plant
+- `GET /api/game/shop` - Get token packages
+- `POST /api/game/shop` - Purchase tokens
+- `GET /api/game/achievements` - Get player achievements
+- `GET /api/game/market/:location` - Get market prices
+
+### Advanced Game Endpoints
+- `POST /api/game/consume` - Consume cannabis product
+- `GET /api/game/consume` - Get current impairment status
+- `POST /api/game/products` - Create product from harvested plant
+- `GET /api/game/smokeshops` - Get available smoke shops
+- `POST /api/game/smokeshops/:id/sell` - Bulk sell to smoke shop
+- `GET /api/game/dealers` - Get available dealers
+- `POST /api/game/dealers/:id/sell` - Sell to dealer (risky)
+- `GET /api/game/premium` - Get premium features
+- `POST /api/game/premium` - Purchase premium feature
+- `GET /api/game/challenges` - Get active challenges
+- `POST /api/game/challenges/:id/claim` - Claim challenge reward
+- `GET /api/game/loyalty` - Get loyalty status
+- `POST /api/game/loyalty/redeem` - Redeem loyalty points
+- `GET /api/game/mistakes` - Get player mistake history
+
+### AI Risk Assessment Endpoints
+- `GET /api/ai-risk/dispensary` - Get dispensary risk assessment
+- `POST /api/ai-risk/dispensary` - Batch risk assessment
+- `GET /api/ai-risk/enforcement` - Get enforcement risk for area
+- `GET /api/ai-risk/nationwide` - Get nationwide risk analysis
+- `GET /api/ai-risk/realtime` - Get real-time risk updates
+
+### Political Donation Endpoints
+- `POST /api/donations/donate` - Make political donation
+- `POST /api/donations/process` - Process payment
+- `GET /api/donations/:politician/settings` - Get donation settings
+- `PUT /api/donations/:politician/settings` - Update donation settings
+- `GET /api/donations/history` - Get user donation history
+- `GET /api/donations/:politician/stats` - Get donation statistics
+- `GET /api/donations/recent` - Get recent donations
+
+### Membership Endpoints
+- `GET /api/membership/tiers` - Get available membership tiers
+- `POST /api/membership/subscribe` - Subscribe to membership
+- `GET /api/membership/status` - Get current membership status
+- `POST /api/membership/cancel` - Cancel membership
+- `GET /api/membership/usage` - Get usage statistics
 
 ### Admin Endpoints
 - `GET /api/admin/dashboard` - System statistics
