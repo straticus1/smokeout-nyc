@@ -68,6 +68,18 @@ A comprehensive full-stack web application ecosystem for tracking smoke shop clo
 
 ### 🤖 AI Risk Assessment Engine
 - **Dispensary Risk Analysis**: Multi-factor location risk assessment
+- **Closure Risk Scoring**: Advanced business closure prediction with 8 weighted factors:
+  - Financial distress analysis (cash flow, revenue trends)
+  - Regulatory violation tracking (license revocation risk)
+  - Enforcement pressure monitoring (raids, investigations)
+  - Market decline assessment (oversaturation, price drops)
+  - Operational issues detection (staffing, inventory problems)
+  - Legal challenges evaluation (zoning disputes, lawsuits)
+  - Supply chain disruption analysis (product availability)
+  - Community opposition measurement (NIMBY issues)
+- **Time-Based Risk Modeling**: 6-24+ month timeframe analysis with probability calculations
+- **Emergency Action Plans**: Critical recommendations for high-risk businesses
+- **Historical Context**: Regional closure rates and business lifespan statistics
 - **Enforcement Prediction**: Real-time enforcement activity tracking
 - **Regulatory Compliance**: Automated regulatory environment analysis
 - **Market Intelligence**: Competition analysis and demographic insights
@@ -232,6 +244,8 @@ Copy `env.example` to `.env` and configure:
 ### AI Risk Assessment Endpoints
 - `GET /api/ai-risk/dispensary` - Get dispensary risk assessment
 - `POST /api/ai-risk/dispensary` - Batch risk assessment
+- `GET /api/ai-risk/closure` - Get business closure risk assessment
+- `POST /api/ai-risk/closure` - Batch closure risk assessment (up to 5 locations)
 - `GET /api/ai-risk/enforcement` - Get enforcement risk for area
 - `GET /api/ai-risk/nationwide` - Get nationwide risk analysis
 - `GET /api/ai-risk/realtime` - Get real-time risk updates
@@ -251,6 +265,71 @@ Copy `env.example` to `.env` and configure:
 - `GET /api/membership/status` - Get current membership status
 - `POST /api/membership/cancel` - Cancel membership
 - `GET /api/membership/usage` - Get usage statistics
+
+### NFT Integration Endpoints
+- `GET /api/nft/genetics` - Get available genetics NFTs
+- `GET /api/nft/genetics/:id` - Get specific genetics NFT details
+- `POST /api/nft/genetics/:id` - Mint genetics NFT
+- `GET /api/nft/marketplace` - Get marketplace listings
+- `POST /api/nft/marketplace` - List NFT for sale
+- `GET /api/nft/collection` - Get user's NFT collection
+- `POST /api/nft/breeding` - Breed new genetics from NFTs
+
+### AR/VR Visualization Endpoints
+- `GET /api/ar/plants` - Get AR-enabled plants
+- `GET /api/ar/plants/:id` - Get AR model for specific plant
+- `POST /api/ar/plants/:id/capture` - Capture AR session data
+- `GET /api/ar/rooms` - Get AR room environments
+- `POST /api/ar/rooms/:id/customize` - Customize AR room
+- `GET /api/ar/sessions` - Get AR session history
+- `GET /api/ar/models` - Get available AR models
+
+### Social Trading Endpoints
+- `GET /api/social-trading/strategies` - Get public trading strategies
+- `GET /api/social-trading/strategies/:id` - Get specific strategy
+- `POST /api/social-trading/strategies` - Create new strategy
+- `PUT /api/social-trading/strategies/:id` - Update strategy
+- `POST /api/social-trading/copy/:id` - Copy trading strategy
+- `GET /api/social-trading/leaderboard` - Get performance leaderboard
+- `GET /api/social-trading/portfolio` - Get user's trading portfolio
+
+### Voice Assistant Endpoints
+- `POST /api/voice/command` - Process voice command
+- `GET /api/voice/capabilities` - Get available voice commands
+- `POST /api/voice/preferences` - Update voice settings
+- `GET /api/voice/history` - Get voice command history
+
+### Enterprise & White Label Endpoints
+- `GET /api/white-label/config` - Get branding configuration
+- `POST /api/white-label/config` - Update branding
+- `GET /api/white-label/analytics` - Get usage analytics
+- `POST /api/white-label/deployment` - Deploy custom instance
+
+### Professional Services Endpoints
+- `GET /api/legal-network/attorneys` - Find cannabis attorneys
+- `POST /api/legal-network/consultation` - Request consultation
+- `GET /api/insurance-marketplace/quotes` - Get insurance quotes
+- `POST /api/insurance-marketplace/application` - Submit application
+- `GET /api/accounting-tools/reports` - Generate financial reports
+- `POST /api/accounting-tools/transactions` - Record transactions
+
+### Advanced Data Service Endpoints
+- `GET /api/data-service/export` - Export user data
+- `POST /api/data-service/import` - Import data
+- `GET /api/data-service/analytics` - Get advanced analytics
+- `POST /api/data-service/webhook` - Register webhook
+
+### Premium Features Endpoints
+- `GET /api/premium/features` - Get available premium features
+- `POST /api/premium/activate` - Activate premium feature
+- `GET /api/premium/status` - Get premium subscription status
+- `POST /api/premium/cancel` - Cancel premium subscription
+
+### User Interface Customization Endpoints
+- `GET /api/ui/themes` - Get available themes
+- `POST /api/ui/theme` - Apply custom theme
+- `GET /api/ui/layout` - Get dashboard layout
+- `POST /api/ui/layout` - Save custom layout
 
 ### Admin Endpoints
 - `GET /api/admin/dashboard` - System statistics
