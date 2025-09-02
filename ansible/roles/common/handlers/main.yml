@@ -1,0 +1,27 @@
+---
+# Common handlers
+
+- name: restart nginx
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: reload nginx
+  systemd:
+    name: nginx
+    state: reloaded
+
+- name: restart php-fpm
+  systemd:
+    name: php8.1-fpm
+    state: restarted
+
+- name: restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+
+- name: restart cloudwatch-agent
+  command: >
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
+    -a restart -m ec2

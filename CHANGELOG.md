@@ -2,6 +2,138 @@
 
 All notable changes to SmokeoutNYC will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.1.0] - 2025-01-XX
+
+### Added
+
+#### 🚀 Infrastructure & DevOps Automation
+- **Complete AWS Infrastructure**: Production-ready Terraform configuration with VPC, ALB, RDS, S3, CloudWatch
+- **Automated Deployment Pipeline**: Comprehensive Ansible playbooks for server provisioning and application deployment
+- **Infrastructure as Code (IaC)**: Full AWS resource management with Terraform modules
+- **Auto Scaling Configuration**: EC2 Auto Scaling Groups with load balancer health checks
+- **Database Management**: RDS MySQL with automated backups, encryption, and multi-AZ deployment
+- **Security Hardening**: VPC isolation, security groups, IAM roles, and least privilege access
+- **Monitoring & Logging**: CloudWatch integration with application and system metrics
+- **SSL/TLS Configuration**: Automated certificate management and HTTPS enforcement
+
+#### 🧪 Comprehensive Testing Suite
+- **Multi-Category Testing**: New `test.sh` script with 9 validation categories:
+  - Environment configuration validation
+  - Dependency verification (Node.js, PHP, client dependencies)
+  - Required directory structure and permissions
+  - Live database connectivity testing
+  - PHP syntax validation for all files
+  - API endpoint health checks and functionality
+  - React build verification
+  - Configuration security validation
+  - File permission and executable script checks
+- **Color-coded Results**: Clear PASS/FAIL/SKIP indicators with actionable remediation steps
+- **Automated Test Reporting**: Comprehensive test summary with specific fix recommendations
+
+#### 📚 Enhanced Documentation
+- **AWS Deployment Guide**: Step-by-step production deployment with Terraform and Ansible
+- **Infrastructure Documentation**: Detailed architecture diagrams and component explanations
+- **Cost Optimization**: AWS cost management strategies and resource sizing guidance
+- **Security Best Practices**: Production security hardening and monitoring guidelines
+- **Troubleshooting Guides**: Common deployment issues and resolution procedures
+- **Performance Monitoring**: Local and production monitoring setup instructions
+
+#### 🔧 Development Experience Improvements
+- **Enhanced Setup Scripts**: Improved `setup.sh` with comprehensive validation and error handling
+- **Development Automation**: Enhanced `dev.sh` with better process management and logging
+- **Environment Templates**: Complete configuration examples for all deployment scenarios
+- **Quick Start Enhancement**: Expanded guide with AWS deployment workflow
+
+### Infrastructure Components
+
+#### Terraform Configuration (`terraform/`)
+- **VPC Setup**: Multi-AZ VPC with public/private subnets and NAT gateway
+- **Load Balancing**: Application Load Balancer with SSL termination and health checks
+- **Database**: RDS MySQL 8.0 with automated backups, encryption at rest, and multi-AZ option
+- **Storage**: S3 bucket with versioning, encryption, and lifecycle policies
+- **Security**: IAM roles, security groups, and CloudWatch log groups
+- **Auto Scaling**: Launch templates and auto scaling groups with customizable capacity
+- **Monitoring**: CloudWatch metrics, logs, and alarms integration
+
+#### Ansible Automation (`ansible/`)
+- **Server Provisioning**: Ubuntu 22.04 LTS with required packages and services
+- **Application Stack**: Nginx, PHP 8.1-FPM, Node.js 18, PM2 process management
+- **Database Setup**: MySQL client configuration and schema deployment
+- **Security Configuration**: fail2ban, SSL certificates, and firewall rules
+- **Monitoring Setup**: CloudWatch agent, log rotation, and health check scripts
+- **Service Management**: Systemd service configuration and automatic startup
+
+### Enhanced Testing & Validation
+
+#### Test Coverage Areas
+1. **Environment Validation**: Configuration files, API keys, and secrets verification
+2. **Dependency Management**: Package installations and version compatibility
+3. **Database Connectivity**: Live connection testing with credential validation
+4. **API Functionality**: Health endpoints and basic CRUD operation testing
+5. **File System**: Directory structure, permissions, and disk space validation
+6. **Security Configuration**: SSL certificates, firewall rules, and access controls
+7. **Performance Metrics**: Response times, memory usage, and CPU utilization
+8. **Integration Testing**: Cross-service communication and data flow validation
+9. **Deployment Verification**: Post-deployment functionality and rollback procedures
+
+### Updated Documentation
+
+#### README.md Enhancements
+- **Infrastructure & DevOps**: Comprehensive AWS deployment section
+- **Security Considerations**: Application and infrastructure security best practices
+- **Testing Documentation**: Complete test suite usage and coverage information
+- **Performance Monitoring**: Development and production monitoring guidelines
+- **Cost Management**: AWS resource optimization and billing management
+
+#### QUICKSTART.md Improvements
+- **AWS Production Deployment**: 30-minute quick deployment guide
+- **Infrastructure Overview**: Component architecture and cost estimates
+- **Production Configuration**: Post-deployment setup and security hardening
+- **Troubleshooting**: Production-specific issue resolution and debugging
+- **Monitoring & Alerts**: CloudWatch setup and performance optimization
+
+### Technical Architecture
+
+#### High Availability Design
+- **Multi-AZ Deployment**: Cross-availability zone redundancy
+- **Load Balancing**: Traffic distribution with health-based routing
+- **Auto Scaling**: Demand-based instance scaling with customizable policies
+- **Database Replication**: RDS multi-AZ with automatic failover
+- **Backup Strategy**: Automated backups with point-in-time recovery
+
+#### Security Framework
+- **Network Security**: VPC isolation with public/private subnet segregation
+- **Access Control**: IAM roles with least privilege principles
+- **Encryption**: Data encryption at rest and in transit
+- **Monitoring**: Real-time security event detection and alerting
+- **Compliance**: Security best practices and audit trail maintenance
+
+#### Deployment Pipeline
+- **Infrastructure Provisioning**: Terraform-managed resource lifecycle
+- **Configuration Management**: Ansible-driven server and application setup
+- **Testing Integration**: Automated testing throughout deployment pipeline
+- **Rollback Capabilities**: Safe deployment with rollback procedures
+- **Environment Consistency**: Identical configurations across environments
+
+### Breaking Changes
+- None in this version - fully backward compatible with v2.0.0
+
+### Migration Guide
+
+#### New Requirements
+- **AWS CLI**: Required for production deployment
+- **Terraform**: v1.0+ for infrastructure management
+- **Ansible**: v4.0+ for configuration automation
+- **SSH Key Pair**: AWS key pair for secure server access
+
+#### Configuration Updates
+1. **Environment Variables**: New AWS-specific variables in `.env` files
+2. **Infrastructure Files**: New `terraform/` and `ansible/` directories
+3. **Testing Scripts**: New `test.sh` script for comprehensive validation
+
 ## [2.0.0] - 2025-08-26
 
 ### 🎮 Major New Features

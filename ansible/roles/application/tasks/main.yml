@@ -1,0 +1,83 @@
+---
+# Application deployment tasks
+
+- name: Check if application code exists
+  stat:
+    path: "{{ app_dir }}"
+  register: app_directory
+
+- name: Clone or update application repository
+  git:
+    repo: "{{ git_repo | default('https://github.com/yourusername/smokeout_nyc.git') }}"
+    dest: "{{ app_dir }}"
+    version: "{{ git_branch | default('main') }}"
+    force: yes
+  become_user: "{{ app_user }}"
+  notify:
+    - restart php-fpm
+    - restart nginx
+
+- name: Check for package.json files
+  stat:
+    path: "{{ item }}"
+  register: package_files
+  loop:
+    - "{{ app_dir }}/package.json"
+    - "{{ app_dir }}/client/package.json"
+    - "{{ app_dir }}/composer.json"
+
+- name: Set package file facts
+  set_fact:
+    package_json: "{{ package_files.results[0] }}"
+    client_package_json: "{{ package_files.results[1] }}"
+    composer_json: "{{ package_files.results[2] }}"
+
+- name: Create environment configuration
+  template:
+    src: .env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: www-data
+    mode: '0640'
+  notify:
+    - restart php-fpm
+    - restart nginx
+
+- name: Create client environment configuration
+  template:
+    src: client.env.j2
+    dest: "{{ app_dir }}/client/.env"
+    owner: "{{ app_user }}"
+    group: www-data
+    mode: '0640'
+
+- name: Set proper permissions for application files
+  file:
+    path: "{{ app_dir }}"
+    owner: "{{ app_user }}"
+    group: www-data
+    mode: '0755'
+    recurse: yes
+
+- name: Set executable permissions for scripts
+  file:
+    path: "{{ app_dir }}/{{ item }}"
+    mode: '0755'
+  loop:
+    - setup.sh
+    - dev.sh
+    - test.sh
+  ignore_errors: yes
+
+- name: Run database setup
+  command: php database/setup_database.php
+  args:
+    chdir: "{{ app_dir }}"
+  become_user: "{{ app_user }}"
+  register: db_setup
+  failed_when: false
+
+- name: Display database setup result
+  debug:
+    var: db_setup.stdout_lines
+  when: db_setup.stdout_lines is defined

@@ -1,0 +1,51 @@
+---
+# SmokeoutNYC v2.0 - Main Deployment Playbook
+# This playbook orchestrates the complete deployment process
+
+- name: Deploy SmokeoutNYC Application
+  hosts: web_servers
+  become: yes
+  vars:
+    app_dir: /var/www/smokeout-nyc
+    app_user: smokeout
+    node_env: "{{ environment }}"
+  
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install system dependencies
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - unzip
+          - software-properties-common
+        state: present
+
+  roles:
+    - common
+    - nginx
+    - php
+    - nodejs
+    - application
+    - monitoring
+
+  post_tasks:
+    - name: Verify application is running
+      uri:
+        url: "http://localhost/api/health.php"
+        method: GET
+        timeout: 30
+      retries: 5
+      delay: 10
+
+    - name: Display deployment information
+      debug:
+        msg:
+          - "Deployment completed successfully!"
+          - "Application URL: http://{{ ansible_default_ipv4.address }}"
+          - "Health Check: http://{{ ansible_default_ipv4.address }}/api/health.php"

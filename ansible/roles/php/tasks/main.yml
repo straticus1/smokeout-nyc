@@ -1,0 +1,67 @@
+---
+# PHP and PHP-FPM setup tasks
+
+- name: Add PHP repository
+  apt_repository:
+    repo: ppa:ondrej/php
+    state: present
+
+- name: Install PHP and extensions
+  apt:
+    name:
+      - php8.1
+      - php8.1-fpm
+      - php8.1-mysql
+      - php8.1-curl
+      - php8.1-json
+      - php8.1-mbstring
+      - php8.1-xml
+      - php8.1-zip
+      - php8.1-gd
+      - php8.1-intl
+      - php8.1-bcmath
+      - composer
+    state: present
+
+- name: Configure PHP-FPM
+  template:
+    src: www.conf.j2
+    dest: /etc/php/8.1/fpm/pool.d/www.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify: restart php-fpm
+
+- name: Configure PHP settings
+  template:
+    src: php.ini.j2
+    dest: /etc/php/8.1/fpm/php.ini
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify: restart php-fpm
+
+- name: Configure PHP CLI settings
+  template:
+    src: php.ini.j2
+    dest: /etc/php/8.1/cli/php.ini
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Start and enable PHP-FPM
+  systemd:
+    name: php8.1-fpm
+    state: started
+    enabled: yes
+
+- name: Install Composer dependencies
+  composer:
+    command: install
+    working_dir: "{{ app_dir }}"
+    no_dev: "{{ 'yes' if node_env == 'production' else 'no' }}"
+    optimize_autoloader: "{{ 'yes' if node_env == 'production' else 'no' }}"
+  become_user: "{{ app_user }}"
+  when: composer_json.stat.exists

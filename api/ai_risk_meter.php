@@ -1,6 +1,7 @@
 <?php
 require_once 'config/database.php';
-require_once 'auth.php';
+require_once 'auth_helper.php';
+require_once 'helpers/ai_risk_functions.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');

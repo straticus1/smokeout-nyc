@@ -1,7 +1,7 @@
 <?php
 /**
  * Database Configuration
- * Political Memes XYZ
+ * SmokeoutNYC v2.0
  */
 
 class Database {
@@ -16,8 +16,8 @@ class Database {
         $this->loadEnv();
         
         $this->host = $_ENV['DB_HOST'] ?? 'localhost';
-        $this->db_name = $_ENV['DB_NAME'] ?? 'politicalmemes_db';
-        $this->username = $_ENV['DB_USER'] ?? 'root';
+        $this->db_name = $_ENV['DB_NAME'] ?? 'smokeout_nyc';
+        $this->username = $_ENV['DB_USER'] ?? 'smokeout_user';
         $this->password = $_ENV['DB_PASS'] ?? '';
     }
 

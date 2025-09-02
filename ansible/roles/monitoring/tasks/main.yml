@@ -1,0 +1,65 @@
+---
+# Monitoring and logging setup tasks
+
+- name: Install CloudWatch agent
+  get_url:
+    url: https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+    dest: /tmp/amazon-cloudwatch-agent.deb
+    mode: '0644'
+
+- name: Install CloudWatch agent package
+  apt:
+    deb: /tmp/amazon-cloudwatch-agent.deb
+    state: present
+
+- name: Configure CloudWatch agent
+  template:
+    src: cloudwatch-config.json.j2
+    dest: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart cloudwatch-agent
+
+- name: Start CloudWatch agent
+  command: >
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
+    -a fetch-config -m ec2 
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+
+- name: Install log monitoring tools
+  apt:
+    name:
+      - fail2ban
+      - logwatch
+    state: present
+
+- name: Configure fail2ban for Nginx
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart fail2ban
+
+- name: Start and enable fail2ban
+  systemd:
+    name: fail2ban
+    state: started
+    enabled: yes
+
+- name: Create health check script
+  template:
+    src: health-check.sh.j2
+    dest: /usr/local/bin/health-check.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Setup health check cron job
+  cron:
+    name: "SmokeoutNYC Health Check"
+    minute: "*/5"
+    job: "/usr/local/bin/health-check.sh >> /var/log/health-check.log 2>&1"
+    user: root

@@ -1,6 +1,14 @@
-# SmokeoutNYC v2.0
+# 🏪 SmokeoutNYC v2.0 - Cannabis Industry Platform
+
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/user/smokeout_nyc)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PHP](https://img.shields.io/badge/php-8.0%2B-blue.svg)](https://php.net)
+[![Node.js](https://img.shields.io/badge/node.js-16%2B-green.svg)](https://nodejs.org)
+[![React](https://img.shields.io/badge/react-18%2B-blue.svg)](https://reactjs.org)
 
 A comprehensive full-stack web application ecosystem for tracking smoke shop closures, Operation Smokeout enforcement, with advanced AI risk assessment, political engagement, and gamification features.
+
+**🎯 What makes SmokeoutNYC unique:** The world's first cannabis platform combining enforcement tracking, AI risk assessment, immersive gaming with realistic impairment mechanics, political engagement, and comprehensive business intelligence.
 
 ## Features
 
@@ -129,11 +137,17 @@ A comprehensive full-stack web application ecosystem for tracking smoke shop clo
 - **Context API** for state management
 - **Socket.io Client** for real-time features
 
-### Infrastructure
-- **AWS** cloud deployment
-- **Terraform** for infrastructure as code
-- **Ansible** for configuration management
-- **CloudFormation** for AWS resource management
+### Infrastructure & DevOps
+- **AWS** cloud deployment with auto-scaling
+- **Terraform** for infrastructure as code (IaC)
+- **Ansible** for configuration management and deployment automation
+- **Application Load Balancer** with health checks
+- **RDS MySQL** with automated backups
+- **S3** for file storage and static assets
+- **CloudWatch** for monitoring and logging
+- **Auto Scaling Groups** for high availability
+- **VPC** with public/private subnets
+- **IAM roles** with least privilege access
 
 ### Security & Monitoring
 - **DOMPurify** for XSS prevention
@@ -142,50 +156,53 @@ A comprehensive full-stack web application ecosystem for tracking smoke shop clo
 - **Rate limiting** with Redis
 - **Comprehensive audit trails**
 
-## Installation
+## Quick Start
 
-1. **Clone the repository**
+See [QUICKSTART.md](QUICKSTART.md) for detailed setup instructions.
+
+### Local Development
+
+1. **Clone and setup**
    ```bash
    git clone <repository-url>
    cd smokeout_nyc
+   ./setup.sh
    ```
 
-2. **Install dependencies**
+2. **Start development environment**
    ```bash
-   npm install
-   cd client && npm install && cd ..
+   ./dev.sh
    ```
 
-3. **Set up environment variables**
+3. **Run tests**
    ```bash
-   cp env.example .env
-   # Edit .env with your configuration
+   ./test.sh
    ```
 
-4. **Set up the database**
-   ```bash
-   npm run db:migrate
-   npm run db:generate
-   npm run db:seed
-   ```
+### Automated Setup
 
-5. **Start the development servers**
-   ```bash
-   npm run dev
-   ```
+The project includes comprehensive automation scripts:
+- `setup.sh` - Complete environment setup
+- `dev.sh` - Start all development servers
+- `test.sh` - Validate installation and setup
 
 ## Environment Configuration
 
-Copy `env.example` to `.env` and configure:
+The project includes example environment files:
+- `.env.example` - Main application configuration
+- `client/.env.example` - Frontend configuration
+- `terraform/terraform.tfvars.example` - Infrastructure configuration
 
-- **Database**: PostgreSQL connection string
-- **Redis**: Redis connection URL
+### Required Environment Variables
+
+- **Database**: MySQL connection details
 - **JWT**: Secret key for token signing
 - **OAuth**: Google and Facebook app credentials
 - **Email**: SMTP configuration for notifications
-- **Payment**: PayPal and Bitcoin settings
-- **Maps**: Google Maps or Mapbox API keys
-- **AWS**: Deployment credentials
+- **Payment**: PayPal and Stripe settings
+- **Maps**: Google Maps API key
+- **AWS**: S3 bucket and CloudWatch configuration
+- **External APIs**: OpenAI, News API keys
 
 ## API Documentation
 
@@ -341,25 +358,103 @@ Copy `env.example` to `.env` and configure:
 
 ## Deployment
 
-### AWS Infrastructure
-```bash
-# Initialize Terraform
-cd infrastructure
-terraform init
-terraform plan
-terraform apply
+### AWS Production Deployment
 
-# Configure with Ansible
-ansible-playbook -i inventory deploy.yml
+The project includes complete AWS infrastructure automation with Terraform and Ansible.
+
+#### Prerequisites
+
+1. **AWS CLI configured** with appropriate permissions
+2. **Terraform** installed (v1.0+)
+3. **Ansible** installed (v4.0+)
+4. **SSH key pair** created in AWS
+
+#### Infrastructure Setup
+
+1. **Configure Terraform variables**
+   ```bash
+   cd terraform
+   cp terraform.tfvars.example terraform.tfvars
+   # Edit terraform.tfvars with your values
+   ```
+
+2. **Deploy infrastructure**
+   ```bash
+   terraform init
+   terraform plan
+   terraform apply
+   ```
+
+#### Application Deployment
+
+1. **Update Ansible inventory** with EC2 instance IPs from Terraform output
+   ```bash
+   cd ansible
+   # Update inventory.yml with instance details
+   ```
+
+2. **Deploy application**
+   ```bash
+   ansible-playbook deploy.yml
+   ```
+
+#### Infrastructure Components
+
+- **VPC**: Multi-AZ with public/private subnets
+- **Application Load Balancer**: With health checks
+- **Auto Scaling Group**: 1-3 EC2 instances
+- **RDS MySQL**: Multi-AZ with automated backups
+- **S3 Bucket**: For file uploads and static assets
+- **CloudWatch**: Comprehensive monitoring and logging
+- **Security Groups**: Least privilege network access
+- **IAM Roles**: Secure service-to-service communication
+
+#### Terraform Outputs
+
+After deployment, Terraform provides:
+- Load balancer DNS name
+- Database endpoint
+- S3 bucket information
+- Application URL
+- Health check endpoint
+
+#### Monitoring & Maintenance
+
+- **Health checks**: Automated via ALB and CloudWatch
+- **Logs**: Centralized in CloudWatch Logs
+- **Metrics**: CPU, memory, disk, and application metrics
+- **Scaling**: Automatic based on CPU utilization
+- **Backups**: Daily RDS snapshots with 7-day retention
+
+#### Cost Optimization
+
+- **Development**: Use `t3.micro` instances and `db.t3.micro`
+- **Production**: Scale up to `t3.small` or larger as needed
+- **Storage**: Start with minimal allocations, auto-scaling enabled
+- **Monitoring**: CloudWatch free tier covers basic monitoring
+
+### Local Development Deployment
+
+```bash
+# Start all services locally
+./dev.sh
+
+# Access application
+# Frontend: http://localhost:3000
+# PHP API: http://localhost:8000
+# Node.js API: http://localhost:3001
 ```
 
-### Docker Deployment
+### Docker Deployment (Alternative)
+
 ```bash
+# Coming soon - Docker Compose configuration
 docker-compose up -d
 ```
 
 ## Security Considerations
 
+### Application Security
 1. **Input Sanitization**: All user input is sanitized server-side
 2. **Authentication**: Multi-layer auth with JWT and session validation
 3. **Authorization**: Role-based access control throughout
@@ -367,13 +462,65 @@ docker-compose up -d
 5. **Audit Trails**: Complete logging of admin actions
 6. **Rate Limiting**: Protection against abuse and DoS attacks
 
+### Infrastructure Security
+1. **VPC Isolation**: Private subnets for database and internal services
+2. **Security Groups**: Restrictive firewall rules
+3. **IAM Roles**: Least privilege access principles
+4. **Encryption**: Data encrypted at rest and in transit
+5. **SSL/TLS**: HTTPS enforced for all external communications
+6. **Monitoring**: Real-time security monitoring with CloudWatch
+7. **Fail2ban**: Automatic IP blocking for suspicious activity
+8. **Regular Updates**: Automated security patches via Ansible
+
+## Testing
+
+The project includes comprehensive testing tools:
+
+```bash
+# Run all tests
+./test.sh
+
+# Test specific components
+php -l api/*.php  # PHP syntax check
+npm test          # JavaScript/React tests
+```
+
+### Test Coverage
+
+- **Environment validation**: Configuration and dependencies
+- **Database connectivity**: Connection and schema validation
+- **API endpoints**: Health checks and basic functionality
+- **File permissions**: Security and access validation
+- **Service availability**: All required services running
+
+## Performance Monitoring
+
+### Local Development
+- Health check endpoint: `http://localhost:8000/api/health.php`
+- Application logs: `logs/` directory
+- Development tools: Browser dev tools, PHP error logs
+
+### Production Monitoring
+- **CloudWatch Metrics**: CPU, memory, disk, network
+- **CloudWatch Logs**: Application and system logs
+- **Health Checks**: Load balancer health monitoring
+- **Alerts**: Automated notifications for issues
+- **Performance Insights**: RDS performance monitoring
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
+4. Run tests: `./test.sh`
 5. Submit a pull request
+
+### Development Guidelines
+- Follow existing code style and patterns
+- Add tests for new functionality
+- Update documentation as needed
+- Ensure all tests pass before submitting
+- Use descriptive commit messages
 
 ## License
 

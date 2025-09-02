@@ -1,0 +1,39 @@
+# SmokeoutNYC v2.0 - Ansible Inventory
+# This file defines the target hosts for deployment
+
+all:
+  children:
+    web_servers:
+      hosts:
+        # Add your EC2 instance IPs/hostnames here
+        # These will be populated after Terraform creates the infrastructure
+        # Example:
+        # web-1:
+        #   ansible_host: 10.0.1.100
+        #   ansible_user: ubuntu
+        # web-2:
+        #   ansible_host: 10.0.1.101
+        #   ansible_user: ubuntu
+      vars:
+        ansible_ssh_private_key_file: ~/.ssh/your-key-pair.pem
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    
+    load_balancers:
+      hosts:
+        # ALB is managed by AWS, no direct host needed
+      vars:
+        # ALB DNS will be in Terraform outputs
+    
+    databases:
+      hosts:
+        # RDS is managed by AWS, no direct host needed
+      vars:
+        # RDS endpoint will be in Terraform outputs
+
+  vars:
+    # Common variables for all hosts
+    project_name: smokeout-nyc
+    environment: dev
+    app_port: 80
+    node_port: 3001
+    php_port: 8000

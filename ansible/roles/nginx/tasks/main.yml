@@ -1,0 +1,49 @@
+---
+# Nginx web server setup tasks
+
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Remove default Nginx configuration
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: restart nginx
+
+- name: Configure Nginx for SmokeoutNYC
+  template:
+    src: smokeout-nyc.conf.j2
+    dest: /etc/nginx/sites-available/smokeout-nyc
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart nginx
+
+- name: Enable SmokeoutNYC site
+  file:
+    src: /etc/nginx/sites-available/smokeout-nyc
+    dest: /etc/nginx/sites-enabled/smokeout-nyc
+    state: link
+  notify: restart nginx
+
+- name: Configure Nginx main settings
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify: restart nginx
+
+- name: Test Nginx configuration
+  command: nginx -t
+  changed_when: false
+
+- name: Start and enable Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes

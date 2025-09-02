@@ -1,0 +1,50 @@
+---
+# Common system setup tasks
+
+- name: Create application user
+  user:
+    name: "{{ app_user }}"
+    home: "/home/{{ app_user }}"
+    shell: /bin/bash
+    groups: www-data
+    append: yes
+    state: present
+
+- name: Create application directory
+  file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: www-data
+    mode: '0755'
+
+- name: Create required subdirectories
+  file:
+    path: "{{ app_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: www-data
+    mode: '0755'
+  loop:
+    - uploads
+    - logs
+    - tmp
+
+- name: Install essential packages
+  apt:
+    name:
+      - htop
+      - vim
+      - curl
+      - wget
+      - git
+      - unzip
+      - supervisor
+      - logrotate
+    state: present
+
+- name: Configure logrotate for application logs
+  template:
+    src: logrotate.conf.j2
+    dest: /etc/logrotate.d/smokeout-nyc
+    mode: '0644'

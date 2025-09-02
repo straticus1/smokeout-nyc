@@ -231,4 +231,113 @@ function handleApiError($e, $context = 'API') {
         sendJsonResponse(false, null, 'Internal server error', 500);
     }
 }
+
+/**
+ * Check membership limits for specific features
+ * @param int $user_id User ID
+ * @param string $feature Feature to check (e.g., 'ai_assessments_per_month')
+ * @return bool True if within limits
+ */
+function checkMembershipLimits($user_id, $feature) {
+    global $pdo;
+    
+    try {
+        // Get user's current membership
+        $stmt = $pdo->prepare("
+            SELECT mt.*, um.status, um.expires_at
+            FROM user_memberships um
+            JOIN membership_tiers mt ON um.tier_id = mt.id
+            WHERE um.user_id = ? AND um.status = 'active' AND um.expires_at > NOW()
+            ORDER BY mt.priority DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$user_id]);
+        $membership = $stmt->fetch();
+        
+        if (!$membership) {
+            // Free tier limits
+            $limits = [
+                'ai_assessments_per_month' => 5,
+                'api_requests_per_day' => 100,
+                'file_uploads_per_month' => 10,
+                'game_actions_per_day' => 50
+            ];
+        } else {
+            // Paid tier limits from database
+            $limits = json_decode($membership['limits'], true) ?? [];
+        }
+        
+        $limit = $limits[$feature] ?? 0;
+        
+        if ($limit <= 0) {
+            return true; // Unlimited
+        }
+        
+        // Check current usage
+        $timeframe = strpos($feature, 'per_month') !== false ? 'MONTH' : 'DAY';
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as usage_count
+            FROM membership_usage
+            WHERE user_id = ? AND feature = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 $timeframe)
+        ");
+        $stmt->execute([$user_id, $feature]);
+        $usage = $stmt->fetch();
+        
+        return ($usage['usage_count'] ?? 0) < $limit;
+    } catch (Exception $e) {
+        error_log("Membership limit check error: " . $e->getMessage());
+        return true; // Allow if check fails
+    }
+}
+
+/**
+ * Log membership usage for tracking
+ * @param int $user_id User ID
+ * @param string $feature Feature used
+ * @param array $metadata Additional metadata
+ */
+function logMembershipUsage($user_id, $feature, $metadata = []) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO membership_usage (user_id, feature, metadata, created_at)
+            VALUES (?, ?, ?, NOW())
+        ");
+        
+        $stmt->execute([
+            $user_id,
+            $feature,
+            json_encode($metadata)
+        ]);
+    } catch (Exception $e) {
+        error_log("Membership usage logging error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Get user's current membership tier
+ * @param int $user_id User ID
+ * @return array|null Membership data or null
+ */
+function getUserMembership($user_id) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare("
+            SELECT mt.*, um.status, um.expires_at, um.created_at as subscribed_at
+            FROM user_memberships um
+            JOIN membership_tiers mt ON um.tier_id = mt.id
+            WHERE um.user_id = ? AND um.status = 'active' AND um.expires_at > NOW()
+            ORDER BY mt.priority DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$user_id]);
+        return $stmt->fetch();
+    } catch (Exception $e) {
+        error_log("Get user membership error: " . $e->getMessage());
+        return null;
+    }
+}
+
 ?>

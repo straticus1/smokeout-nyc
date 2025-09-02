@@ -1,0 +1,74 @@
+---
+# Node.js setup tasks
+
+- name: Install Node.js repository key
+  apt_key:
+    url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+    state: present
+
+- name: Add Node.js repository
+  apt_repository:
+    repo: "deb https://deb.nodesource.com/node_18.x {{ ansible_distribution_release }} main"
+    state: present
+
+- name: Install Node.js and npm
+  apt:
+    name:
+      - nodejs
+    state: present
+    update_cache: yes
+
+- name: Install PM2 globally
+  npm:
+    name: pm2
+    global: yes
+    state: present
+
+- name: Install root package dependencies
+  npm:
+    path: "{{ app_dir }}"
+    production: "{{ 'yes' if node_env == 'production' else 'no' }}"
+  become_user: "{{ app_user }}"
+  when: package_json.stat.exists
+
+- name: Install client dependencies
+  npm:
+    path: "{{ app_dir }}/client"
+    production: "{{ 'yes' if node_env == 'production' else 'no' }}"
+  become_user: "{{ app_user }}"
+  when: client_package_json.stat.exists
+
+- name: Build React client
+  command: npm run build
+  args:
+    chdir: "{{ app_dir }}/client"
+  become_user: "{{ app_user }}"
+  when: 
+    - client_package_json.stat.exists
+    - node_env == 'production'
+
+- name: Configure PM2 for Node.js application
+  template:
+    src: ecosystem.config.js.j2
+    dest: "{{ app_dir }}/ecosystem.config.js"
+    owner: "{{ app_user }}"
+    group: www-data
+    mode: '0644'
+
+- name: Start Node.js application with PM2
+  command: pm2 start {{ app_dir }}/ecosystem.config.js
+  become_user: "{{ app_user }}"
+  args:
+    chdir: "{{ app_dir }}"
+
+- name: Save PM2 configuration
+  command: pm2 save
+  become_user: "{{ app_user }}"
+
+- name: Setup PM2 startup script
+  command: pm2 startup systemd -u {{ app_user }} --hp /home/{{ app_user }}
+  register: startup_script
+
+- name: Execute PM2 startup script
+  shell: "{{ startup_script.stdout_lines[-1] }}"
+  when: startup_script.stdout_lines is defined
