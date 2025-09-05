@@ -134,6 +134,76 @@ GOOGLE_MAPS_API_KEY=your-maps-api-key
 ```bash
 REACT_APP_API_BASE_URL=http://localhost:8000/api
 REACT_APP_GOOGLE_MAPS_API_KEY=your-maps-api-key
+REACT_APP_WEBSOCKET_URL=http://localhost:3001
+```
+
+## 🔌 External API Integration (Phase 1)
+
+### Required API Keys
+
+For full functionality, you'll need to obtain API keys from these services:
+
+#### Essential Services (Phase 1)
+```bash
+# Copy from server/.env.external-apis to your .env file
+
+# AI Features - OpenAI (Required for AI recommendations)
+OPENAI_API_KEY=sk-your_openai_api_key_here
+
+# Payment Processing - Stripe (Required for premium features)
+STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
+STRIPE_SECRET_KEY=sk_test_your_secret_key_here
+
+# Geolocation - Google Maps (Enhanced location features)
+GOOGLE_MAPS_API_KEY=AIzaSy_your_google_maps_api_key_here
+
+# Notifications - Twilio SMS (Optional)
+TWILIO_ACCOUNT_SID=AC_your_account_sid_here
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_PHONE_NUMBER=+1234567890
+
+# Email - SendGrid (Optional)
+SENDGRID_API_KEY=SG._your_sendgrid_api_key_here
+
+# Push Notifications - Firebase (Optional)
+FIREBASE_SERVER_KEY=AAAA_your_firebase_server_key_here
+```
+
+#### Getting API Keys
+
+**OpenAI (AI Recommendations)**
+1. Visit [OpenAI API](https://openai.com/api/)
+2. Create account → API Keys → Create new key
+3. Start with $5 credit (pay-as-you-go)
+
+**Stripe (Payments)**
+1. Visit [Stripe Dashboard](https://dashboard.stripe.com/)
+2. Create account → Developers → API Keys
+3. Use test keys for development
+
+**Google Maps (Geolocation)**
+1. Visit [Google Cloud Console](https://console.cloud.google.com/)
+2. Create project → APIs & Services → Enable Maps/Places APIs
+3. Create credentials → API Key
+
+**Twilio (SMS Notifications)**
+1. Visit [Twilio Console](https://console.twilio.com/)
+2. Create account → Get phone number
+3. Find Account SID and Auth Token in dashboard
+
+#### Optional Features
+```bash
+# Weather Integration
+OPENWEATHERMAP_API_KEY=your_openweathermap_api_key_here
+
+# News Integration
+NEWS_API_KEY=your_news_api_key_here
+
+# Feature Flags (Enable/Disable features)
+ENABLE_AI_RECOMMENDATIONS=true
+ENABLE_REAL_TIME_NOTIFICATIONS=true
+ENABLE_PAYMENT_PROCESSING=true
+ENABLE_SMS_NOTIFICATIONS=false
 ```
 
 ## 🎮 Gaming System Features
@@ -150,6 +220,23 @@ REACT_APP_GOOGLE_MAPS_API_KEY=your-maps-api-key
 - **Girl Scout Cookies** (Intermediate, $20)
 - **White Widow** (Beginner, $12)
 - **OG Kush** (Expert, $25)
+
+### New Phase 1 Features
+#### Advanced Analytics Dashboard
+- Real-time user metrics
+- AI-powered insights
+- Custom reporting
+- Performance tracking
+- Revenue analytics
+
+#### External API Integrations
+- **AI Recommendations**: OpenAI-powered business compliance advice
+- **Payment Processing**: Stripe integration for premium subscriptions
+- **Real-time Features**: WebSocket server for live updates
+- **Notifications**: SMS, Email, and Push notifications
+- **Geolocation**: Enhanced address validation and mapping
+- **Weather Integration**: Location-based weather data
+- **News Feed**: Relevant regulatory news and updates
 
 ### Growing Locations
 - **Small Tent** (2 plants, Free)
@@ -250,26 +337,56 @@ mysql -u smokeout_user -p smokeout_nyc < database/complete_schema.sql
 # Check API health
 curl http://localhost:8000/api/health.php
 
+# Test external API health
+curl http://localhost:8000/api/external/health
+
+# Start real-time WebSocket server
+cd realtime-server && npm start
+
 # View real-time logs
 tail -f logs/php-server.log
+tail -f logs/realtime-server.log
 
 # Stop all development servers
 pkill -f "php -S"
 pkill -f "npm start"
+pkill -f "node realtime-server"
 
 # Reset database
 mysql -u smokeout_user -p -e "DROP DATABASE smokeout_nyc; CREATE DATABASE smokeout_nyc;"
 mysql -u smokeout_user -p smokeout_nyc < database/complete_schema.sql
+
+# Test AI recommendations
+curl -X POST http://localhost:8000/api/ai/recommendations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"business_type":"restaurant","address":"123 Main St","risk_factors":["recent_violation"]}'
+
+# Test payment processing
+curl -X POST http://localhost:8000/api/payments/process \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"amount":29.99,"currency":"usd","payment_method_id":"pm_test_card"}'
 ```
 
 ## 🎯 Next Steps
 
 ### Local Development
-1. **Update API Keys**: Add real API keys in `.env` files
-2. **Configure OAuth**: Set up Google/Facebook OAuth apps
-3. **Customize Branding**: Update logos and colors
-4. **Add Content**: Import smoke shop data
-5. **Test Features**: Try the gaming system and AI risk assessment
+1. **Update API Keys**: Copy from `server/.env.external-apis` to your `.env` files
+2. **Configure External Services**: 
+   - Set up OpenAI account for AI recommendations
+   - Configure Stripe for payment processing
+   - Enable Google Maps for enhanced geolocation
+   - Set up Twilio for SMS notifications (optional)
+3. **Start Real-time Server**: `cd realtime-server && npm start` 
+4. **Test Advanced Features**:
+   - Visit `/analytics` for the advanced dashboard
+   - Try AI-powered recommendations
+   - Test real-time notifications
+   - Process test payments with Stripe
+5. **Customize Branding**: Update logos and colors
+6. **Add Content**: Import smoke shop data
+7. **Configure Feature Flags**: Enable/disable features in `.env`
 
 ### Production Deployment
 6. **AWS Setup**: Follow the AWS deployment guide below

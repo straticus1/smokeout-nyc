@@ -1,0 +1,235 @@
+---
+# SmokeoutNYC Option B Deployment Playbook
+# This playbook deploys the application to AWS ECS Fargate services
+# after infrastructure has been provisioned with Terraform
+
+- name: Deploy SmokeoutNYC to AWS ECS (Option B)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    aws_region: "{{ aws_region | default('us-east-1') }}"
+    project_name: "{{ project_name | default('smokeoutnyc') }}"
+    environment: "{{ environment | default('prod') }}"
+    
+  tasks:
+    - name: Ensure AWS CLI is installed
+      command: aws --version
+      register: aws_version
+      changed_when: false
+      failed_when: aws_version.rc != 0
+
+    - name: Ensure Docker is installed
+      command: docker --version
+      register: docker_version
+      changed_when: false
+      failed_when: docker_version.rc != 0
+
+    - name: Build and push API Docker image
+      block:
+        - name: Build PHP API Docker image
+          docker_image:
+            build:
+              path: "{{ playbook_dir }}/../../"
+              dockerfile: "{{ playbook_dir }}/docker/Dockerfile.api"
+            name: "{{ api_image_name }}"
+            tag: "{{ image_tag }}"
+            source: build
+          vars:
+            api_image_name: "{{ ecr_registry }}/{{ project_name }}-api"
+            image_tag: "{{ ansible_date_time.epoch }}"
+
+        - name: Tag API image for ECR
+          docker_image:
+            name: "{{ api_image_name }}"
+            repository: "{{ ecr_registry }}/{{ project_name }}-api"
+            tag: latest
+            source: local
+
+        - name: Push API image to ECR
+          docker_image:
+            name: "{{ ecr_registry }}/{{ project_name }}-api"
+            tag: latest
+            push: yes
+            source: local
+
+    - name: Build and push Realtime Docker image
+      block:
+        - name: Build Node.js realtime Docker image
+          docker_image:
+            build:
+              path: "{{ playbook_dir }}/../../src/realtime"
+              dockerfile: "{{ playbook_dir }}/docker/Dockerfile.realtime"
+            name: "{{ realtime_image_name }}"
+            tag: "{{ image_tag }}"
+            source: build
+          vars:
+            realtime_image_name: "{{ ecr_registry }}/{{ project_name }}-realtime"
+            image_tag: "{{ ansible_date_time.epoch }}"
+
+        - name: Tag realtime image for ECR
+          docker_image:
+            name: "{{ realtime_image_name }}"
+            repository: "{{ ecr_registry }}/{{ project_name }}-realtime"
+            tag: latest
+            source: local
+
+        - name: Push realtime image to ECR
+          docker_image:
+            name: "{{ ecr_registry }}/{{ project_name }}-realtime"
+            tag: latest
+            push: yes
+            source: local
+
+    - name: Deploy database migrations
+      block:
+        - name: Get RDS endpoint from Terraform output
+          shell: cd {{ playbook_dir }}/../../terraform/option_b && terraform output -raw db_endpoint
+          register: rds_endpoint
+          
+        - name: Run database migrations
+          mysql_db:
+            name: "{{ db_name }}"
+            login_host: "{{ rds_endpoint.stdout }}"
+            login_user: "{{ db_username }}"
+            login_password: "{{ db_password }}"
+            state: import
+            target: "{{ item }}"
+          loop:
+            - "{{ playbook_dir }}/../../database/smokeout_schema.sql"
+            - "{{ playbook_dir }}/../../database/phase1_enhancements_schema.sql"
+          ignore_errors: true  # Tables might already exist
+
+    - name: Update ECS services with new images
+      block:
+        - name: Update API service task definition
+          ecs_taskdefinition:
+            family: "{{ project_name }}-{{ environment }}-api"
+            containers:
+              - name: php-api
+                image: "{{ ecr_registry }}/{{ project_name }}-api:latest"
+                memory: 1024
+                cpu: 512
+                essential: true
+                portMappings:
+                  - containerPort: 80
+                    protocol: tcp
+                environment:
+                  - name: DB_HOST
+                    value: "{{ rds_endpoint.stdout }}"
+                  - name: DB_NAME
+                    value: "{{ db_name }}"
+                  - name: DB_USER
+                    value: "{{ db_username }}"
+                  - name: DB_PASS
+                    value: "{{ db_password }}"
+                  - name: ENV
+                    value: "{{ environment }}"
+                logConfiguration:
+                  logDriver: awslogs
+                  options:
+                    awslogs-group: "/ecs/{{ project_name }}-{{ environment }}-api"
+                    awslogs-region: "{{ aws_region }}"
+                    awslogs-stream-prefix: "ecs"
+            launch_type: FARGATE
+            network_mode: awsvpc
+            requires_compatibilities:
+              - FARGATE
+            cpu: "512"
+            memory: "1024"
+            state: present
+            region: "{{ aws_region }}"
+
+        - name: Update realtime service task definition
+          ecs_taskdefinition:
+            family: "{{ project_name }}-{{ environment }}-realtime"
+            containers:
+              - name: node-realtime
+                image: "{{ ecr_registry }}/{{ project_name }}-realtime:latest"
+                memory: 512
+                cpu: 256
+                essential: true
+                portMappings:
+                  - containerPort: 80
+                    protocol: tcp
+                environment:
+                  - name: NODE_ENV
+                    value: "{{ environment }}"
+                  - name: PORT
+                    value: "80"
+                logConfiguration:
+                  logDriver: awslogs
+                  options:
+                    awslogs-group: "/ecs/{{ project_name }}-{{ environment }}-realtime"
+                    awslogs-region: "{{ aws_region }}"
+                    awslogs-stream-prefix: "ecs"
+            launch_type: FARGATE
+            network_mode: awsvpc
+            requires_compatibilities:
+              - FARGATE
+            cpu: "256"
+            memory: "512"
+            state: present
+            region: "{{ aws_region }}"
+
+        - name: Force update API service
+          ecs_service:
+            name: "{{ project_name }}-{{ environment }}-api"
+            cluster: "{{ project_name }}-{{ environment }}-cluster"
+            task_definition: "{{ project_name }}-{{ environment }}-api"
+            desired_count: 2
+            force_new_deployment: true
+            state: present
+            region: "{{ aws_region }}"
+
+        - name: Force update realtime service
+          ecs_service:
+            name: "{{ project_name }}-{{ environment }}-realtime"
+            cluster: "{{ project_name }}-{{ environment }}-cluster"
+            task_definition: "{{ project_name }}-{{ environment }}-realtime"
+            desired_count: 2
+            force_new_deployment: true
+            state: present
+            region: "{{ aws_region }}"
+
+    - name: Wait for services to be stable
+      ecs_service_info:
+        service: "{{ item }}"
+        cluster: "{{ project_name }}-{{ environment }}-cluster"
+        region: "{{ aws_region }}"
+      register: service_info
+      until: service_info.services[0].deployments | selectattr('status', 'equalto', 'PRIMARY') | list | length == 1
+      retries: 30
+      delay: 30
+      loop:
+        - "{{ project_name }}-{{ environment }}-api"
+        - "{{ project_name }}-{{ environment }}-realtime"
+
+    - name: Get ALB DNS name
+      shell: cd {{ playbook_dir }}/../../terraform/option_b && terraform output -raw alb_dns_name
+      register: alb_dns
+
+    - name: Display deployment information
+      debug:
+        msg: |
+          ====================================
+          SmokeoutNYC Option B Deployment Complete!
+          ====================================
+          
+          Application URL: http://{{ alb_dns.stdout }}
+          
+          Services Deployed:
+          - PHP API: {{ ecr_registry }}/{{ project_name }}-api:latest
+          - Node Realtime: {{ ecr_registry }}/{{ project_name }}-realtime:latest
+          
+          Infrastructure:
+          - ECS Cluster: {{ project_name }}-{{ environment }}-cluster
+          - Load Balancer: {{ alb_dns.stdout }}
+          - Database: {{ rds_endpoint.stdout }}
+          
+          Next Steps:
+          1. Update DNS to point to {{ alb_dns.stdout }}
+          2. Configure SSL certificate (ACM + Route 53)
+          3. Set up CloudWatch monitoring and alerts
+          4. Configure backups and disaster recovery
+          ====================================
