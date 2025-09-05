@@ -4,12 +4,16 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import Header from './components/Header';
+import ErrorBoundary from './components/ErrorBoundary';
 import Home from './pages/Home';
 import StoreMap from './pages/StoreMap';
 import AddStore from './pages/AddStore';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import AIRiskAssistantPage from './pages/AIRiskAssistantPage';
+import MultiplayerHubPage from './pages/MultiplayerHubPage';
+import NotificationsPage from './pages/NotificationsPage';
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -37,6 +41,9 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/ai-risk-assistant" element={<ErrorBoundary><AIRiskAssistantPage /></ErrorBoundary>} />
+                <Route path="/multiplayer-hub" element={<ErrorBoundary><MultiplayerHubPage /></ErrorBoundary>} />
+                <Route path="/notifications" element={<ErrorBoundary><NotificationsPage /></ErrorBoundary>} />
               </Routes>
             </main>
             <Toaster 

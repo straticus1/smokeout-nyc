@@ -11,14 +11,19 @@ import {
   MagnifyingGlassIcon,
   StarIcon,
   NewspaperIcon,
-  CheckBadgeIcon
+  CheckBadgeIcon,
+  SparklesIcon,
+  UserGroupIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 import BuyCreditsModal from './BuyCreditsModal';
+import SmartNotificationsCenter from './SmartNotificationsCenter';
 
 const Header: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [showBuyCredits, setShowBuyCredits] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -31,29 +36,29 @@ const Header: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="text-2xl">😂</div>
+<Link to="/" className="flex items-center space-x-2">
+              <div className="text-2xl">🏪</div>
               <h1 className="text-xl font-bold text-indigo-600">
-                PoliticalMemes.XYZ
+                SmokeoutNYC
               </h1>
             </Link>
 
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
               <Link 
-                to="/" 
+                to="/map" 
                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <MagnifyingGlassIcon className="w-4 h-4" />
-                <span>Search</span>
+                <span>Map</span>
               </Link>
               
               <Link 
-                to="/meme-of-day" 
+                to="/add-store" 
                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <StarIcon className="w-4 h-4" />
-                <span>PolitiMeme of the Day</span>
+                <span>Add Store</span>
               </Link>
               
               <Link 
@@ -63,20 +68,25 @@ const Header: React.FC = () => {
                 <NewspaperIcon className="w-4 h-4" />
                 <span>News</span>
               </Link>
-              
-              <Link 
-                to="/elections" 
-                className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <CheckBadgeIcon className="w-4 h-4" />
-                <span>Elections</span>
-              </Link>
             </nav>
 
             {/* User Menu */}
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
                 <>
+                  {/* Notifications Button */}
+                  <button
+                    onClick={() => setShowNotifications(true)}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors relative"
+                    title="Smart Notifications"
+                  >
+                    <BellIcon className="w-6 h-6" />
+                    {/* Notification Badge */}
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      3
+                    </span>
+                  </button>
+
                   {/* Credits Display */}
                   <button
                     onClick={() => setShowBuyCredits(true)}
@@ -141,6 +151,53 @@ const Header: React.FC = () => {
                           )}
                         </Menu.Item>
 
+                        <div className="border-t border-gray-100 mt-1">
+                          <div className="px-4 py-2">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Phase 1 Features</p>
+                          </div>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <Link
+                                to="/ai-risk-assistant"
+                                className={`${
+                                  active ? 'bg-gray-50' : ''
+                                } flex items-center space-x-2 px-4 py-2 text-sm text-gray-700`}
+                              >
+                                <SparklesIcon className="w-4 h-4 text-purple-600" />
+                                <span>AI Risk Assistant</span>
+                              </Link>
+                            )}
+                          </Menu.Item>
+
+                          <Menu.Item>
+                            {({ active }) => (
+                              <Link
+                                to="/multiplayer-hub"
+                                className={`${
+                                  active ? 'bg-gray-50' : ''
+                                } flex items-center space-x-2 px-4 py-2 text-sm text-gray-700`}
+                              >
+                                <UserGroupIcon className="w-4 h-4 text-indigo-600" />
+                                <span>Multiplayer Hub</span>
+                              </Link>
+                            )}
+                          </Menu.Item>
+
+                          <Menu.Item>
+                            {({ active }) => (
+                              <Link
+                                to="/notifications"
+                                className={`${
+                                  active ? 'bg-gray-50' : ''
+                                } flex items-center space-x-2 px-4 py-2 text-sm text-gray-700`}
+                              >
+                                <BellIcon className="w-4 h-4 text-blue-600" />
+                                <span>Smart Notifications</span>
+                              </Link>
+                            )}
+                          </Menu.Item>
+                        </div>
+
                         <Menu.Item>
                           {({ active }) => (
                             <Link
@@ -199,6 +256,12 @@ const Header: React.FC = () => {
       <BuyCreditsModal 
         isOpen={showBuyCredits}
         onClose={() => setShowBuyCredits(false)}
+      />
+      
+      {/* Smart Notifications Center */}
+      <SmartNotificationsCenter 
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
     </>
   );

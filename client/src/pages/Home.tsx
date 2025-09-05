@@ -51,6 +51,39 @@ const Home: React.FC = () => {
               Add a Store
             </Link>
           </div>
+
+          {/* Phase 1 Features Preview */}
+          <div className="mt-12">
+            <div className="bg-black bg-opacity-10 backdrop-blur-sm rounded-xl p-6 max-w-4xl mx-auto">
+              <h3 className="text-xl font-bold mb-4 text-center">🚀 New Phase 1 Features Now Available!</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link
+                  to="/ai-risk-assistant"
+                  className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 transition-all text-center group"
+                >
+                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🤖</div>
+                  <div className="font-semibold mb-1">AI Risk Assistant</div>
+                  <div className="text-sm opacity-90">Natural language risk analysis</div>
+                </Link>
+                <Link
+                  to="/multiplayer-hub"
+                  className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 transition-all text-center group"
+                >
+                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">👥</div>
+                  <div className="font-semibold mb-1">Multiplayer Hub</div>
+                  <div className="text-sm opacity-90">Guilds, trading & competitions</div>
+                </Link>
+                <Link
+                  to="/notifications"
+                  className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 transition-all text-center group"
+                >
+                  <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">🔔</div>
+                  <div className="font-semibold mb-1">Smart Notifications</div>
+                  <div className="text-sm opacity-90">AI-powered delivery optimization</div>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

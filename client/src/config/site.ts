@@ -105,8 +105,8 @@ export interface SiteConfig {
 export const defaultSiteConfig: SiteConfig = {
   app: {
     name: 'SmokeoutNYC',
-    version: '2.0.0',
-    description: 'Track NYC Smoke Shop Closures & Operation Smokeout',
+    version: '2.2.0',
+    description: 'Track NYC Smoke Shop Closures & Operation Smokeout with AI Risk Assessment and Multiplayer Gaming',
     url: process.env.REACT_APP_SITE_URL || 'http://localhost:3000'
   },
   
