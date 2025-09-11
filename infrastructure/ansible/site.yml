@@ -1,0 +1,129 @@
+---
+# SmokeoutNYC Main Ansible Playbook
+# Deploys the complete application stack
+
+- name: Deploy SmokeoutNYC Application
+  hosts: web_servers
+  become: yes
+  gather_facts: yes
+  serial: 1 # Deploy one server at a time for zero-downtime
+  
+  vars:
+    app_name: smokeout-nyc
+    app_user: ec2-user
+    app_dir: "/var/www/{{ app_name }}"
+    git_repo: "https://github.com/your-username/smokeout-nyc.git"
+    git_branch: "{{ branch | default('main') }}"
+    node_version: "18"
+    php_version: "8.1"
+    
+    # Deployment settings
+    deployment_strategy: rolling
+    health_check_url: "/health"
+    max_deploy_time: 600
+    
+  pre_tasks:
+    - name: Check if instance is ready
+      wait_for:
+        path: /tmp/setup-complete
+        timeout: 300
+      tags: [always]
+    
+    - name: Gather service facts
+      service_facts:
+      tags: [always]
+
+  roles:
+    - role: common
+      tags: [common, setup]
+    
+    - role: database_setup
+      tags: [database, setup]
+    
+    - role: application_deploy
+      tags: [deploy, app]
+    
+    - role: websocket_server
+      tags: [websocket, deploy]
+    
+    - role: monitoring_setup
+      tags: [monitoring, setup]
+    
+    - role: security_hardening
+      tags: [security, setup]
+
+  post_tasks:
+    - name: Verify deployment
+      uri:
+        url: "http://localhost{{ health_check_url }}"
+        method: GET
+        status_code: 200
+      retries: 5
+      delay: 10
+      tags: [always]
+    
+    - name: Register instance with load balancer
+      command: >
+        aws elbv2 register-targets
+        --target-group-arn {{ target_group_arn }}
+        --targets Id={{ ansible_ec2_instance_id }}
+      delegate_to: localhost
+      when: target_group_arn is defined
+      tags: [deploy]
+
+- name: Post-deployment tasks
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  
+  tasks:
+    - name: Run smoke tests
+      include_tasks: tasks/smoke_tests.yml
+      tags: [test, smoke]
+    
+    - name: Send deployment notification
+      include_tasks: tasks/notifications.yml
+      tags: [notify]
+
+# Database maintenance playbook
+- name: Database maintenance
+  hosts: web_servers[0] # Run only on first server
+  become: yes
+  
+  tasks:
+    - name: Run database migrations
+      shell: |
+        cd {{ app_dir }}/api
+        php artisan migrate --force
+      become_user: "{{ app_user }}"
+      when: run_migrations | default(false)
+      tags: [never, migrations]
+    
+    - name: Seed database if empty
+      shell: |
+        cd {{ app_dir }}/api
+        php artisan db:seed --force
+      become_user: "{{ app_user }}"
+      when: seed_database | default(false)
+      tags: [never, seed]
+
+# Backup playbook
+- name: Create application backup
+  hosts: web_servers[0]
+  become: yes
+  
+  tasks:
+    - name: Create database backup
+      shell: |
+        mysqldump -h {{ db_host }} -u {{ db_username }} -p{{ db_password }} {{ db_name }} > /tmp/{{ app_name }}-backup-$(date +%Y%m%d-%H%M%S).sql
+      when: create_backup | default(false)
+      tags: [never, backup]
+    
+    - name: Upload backup to S3
+      aws_s3:
+        bucket: "{{ s3_bucket }}"
+        object: "backups/{{ app_name }}-backup-{{ ansible_date_time.epoch }}.sql"
+        src: "/tmp/{{ app_name }}-backup-{{ ansible_date_time.epoch }}.sql"
+        mode: put
+      when: create_backup | default(false)
+      tags: [never, backup]

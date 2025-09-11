@@ -1,0 +1,228 @@
+---
+# Application Deployment Tasks
+
+- name: Create application directory
+  file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: '0755'
+
+- name: Clone application repository
+  git:
+    repo: "{{ git_repo }}"
+    dest: "{{ app_dir }}"
+    version: "{{ git_branch }}"
+    force: yes
+    depth: 1
+  become_user: "{{ app_user }}"
+  notify:
+    - restart nginx
+    - restart php-fpm
+
+- name: Install PHP dependencies
+  composer:
+    command: install
+    working_dir: "{{ app_dir }}/api"
+    no_dev: "{{ 'yes' if ansible_env == 'production' else 'no' }}"
+    optimize_autoloader: "{{ 'yes' if ansible_env == 'production' else 'no' }}"
+  become_user: "{{ app_user }}"
+  environment:
+    COMPOSER_CACHE_DIR: "/home/{{ app_user }}/.composer/cache"
+
+- name: Install Node.js dependencies
+  npm:
+    path: "{{ app_dir }}/client"
+    state: present
+    production: "{{ true if ansible_env == 'production' else false }}"
+  become_user: "{{ app_user }}"
+  environment:
+    NODE_ENV: "{{ ansible_env | default('production') }}"
+
+- name: Build React application
+  command: npm run build
+  args:
+    chdir: "{{ app_dir }}/client"
+  become_user: "{{ app_user }}"
+  environment:
+    NODE_ENV: production
+    REACT_APP_API_URL: "https://{{ domain_name }}/api"
+    REACT_APP_WS_URL: "wss://{{ domain_name }}/ws"
+  notify:
+    - restart nginx
+
+- name: Create application configuration
+  template:
+    src: env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: '0600'
+  notify:
+    - restart php-fpm
+    - restart websocket-server
+
+- name: Create logs directory
+  file:
+    path: "{{ app_dir }}/logs"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: '0755'
+
+- name: Set proper file permissions
+  shell: |
+    find {{ app_dir }} -type f -exec chmod 644 {} \;
+    find {{ app_dir }} -type d -exec chmod 755 {} \;
+    chmod +x {{ app_dir }}/server/websocket_server.php
+    chmod 600 {{ app_dir }}/.env
+  become: yes
+
+- name: Configure PHP-FPM pool
+  template:
+    src: php-fpm-pool.conf.j2
+    dest: /etc/php-fpm.d/{{ app_name }}.conf
+    backup: yes
+  notify:
+    - restart php-fpm
+
+- name: Configure Nginx virtual host
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/conf.d/{{ app_name }}.conf
+    backup: yes
+  notify:
+    - restart nginx
+
+- name: Test Nginx configuration
+  command: nginx -t
+  changed_when: false
+
+- name: Create SSL certificate directory
+  file:
+    path: /etc/ssl/{{ app_name }}
+    state: directory
+    mode: '0750'
+  when: ssl_certificate is defined
+
+- name: Install SSL certificates
+  copy:
+    content: "{{ item.content }}"
+    dest: "/etc/ssl/{{ app_name }}/{{ item.name }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { content: "{{ ssl_certificate }}", name: "cert.pem", mode: "0644" }
+    - { content: "{{ ssl_private_key }}", name: "key.pem", mode: "0600" }
+  when: ssl_certificate is defined
+  notify:
+    - restart nginx
+
+- name: Create systemd service for WebSocket server
+  template:
+    src: websocket.service.j2
+    dest: /etc/systemd/system/{{ app_name }}-websocket.service
+  notify:
+    - reload systemd
+    - restart websocket-server
+
+- name: Enable and start services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  loop:
+    - nginx
+    - php-fpm
+    - "{{ app_name }}-websocket"
+
+- name: Wait for services to be ready
+  wait_for:
+    port: "{{ item }}"
+    delay: 5
+    timeout: 60
+  loop:
+    - 80
+    - 9000
+    - 8080
+
+- name: Run database migrations
+  command: php artisan migrate --force
+  args:
+    chdir: "{{ app_dir }}/api"
+  become_user: "{{ app_user }}"
+  when: run_migrations | default(true)
+  environment:
+    APP_ENV: "{{ ansible_env | default('production') }}"
+
+- name: Clear and cache application config
+  shell: |
+    cd {{ app_dir }}/api
+    php artisan config:clear
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+  become_user: "{{ app_user }}"
+  when: ansible_env == 'production'
+
+- name: Set up log rotation
+  template:
+    src: logrotate.j2
+    dest: /etc/logrotate.d/{{ app_name }}
+  notify:
+    - restart rsyslog
+
+- name: Create health check script
+  template:
+    src: health_check.sh.j2
+    dest: "{{ app_dir }}/health_check.sh"
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+
+- name: Schedule health checks
+  cron:
+    name: "{{ app_name }} health check"
+    minute: "*/2"
+    job: "{{ app_dir }}/health_check.sh"
+    user: "{{ app_user }}"
+
+- name: Configure CloudWatch agent for application logs
+  template:
+    src: cloudwatch-agent.json.j2
+    dest: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+  notify:
+    - restart cloudwatch-agent
+
+- name: Verify application is responding
+  uri:
+    url: "http://localhost/health"
+    method: GET
+    timeout: 30
+  retries: 3
+  delay: 10
+  register: health_check_result
+
+- name: Display deployment summary
+  debug:
+    msg: |
+      =====================================
+      SmokeoutNYC Deployment Summary
+      =====================================
+      Application: {{ app_name }}
+      Environment: {{ ansible_env | default('production') }}
+      Version: {{ git_branch }}
+      Deploy Time: {{ ansible_date_time.iso8601 }}
+      Health Check: {{ 'PASSED' if health_check_result.status == 200 else 'FAILED' }}
+      
+      Services Status:
+      - Nginx: {{ ansible_facts.services['nginx.service'].state }}
+      - PHP-FPM: {{ ansible_facts.services['php-fpm.service'].state }}
+      - WebSocket: {{ ansible_facts.services[app_name + '-websocket.service'].state }}
+      
+      URLs:
+      - Application: https://{{ domain_name }}
+      - Health Check: https://{{ domain_name }}/health
+      - WebSocket: wss://{{ domain_name }}/ws
+      =====================================

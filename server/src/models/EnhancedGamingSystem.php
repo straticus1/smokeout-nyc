@@ -99,6 +99,257 @@ class EnhancedGamingSystem extends Model
         $patterns = ['indica', 'sativa', 'hybrid', 'autoflower', 'ruderalis'];
         return $patterns[array_rand($patterns)];
     }
+    
+    /**
+     * Advanced crossbreeding system
+     */
+    public function breedGenetics($parent1_id, $parent2_id, $user_id)
+    {
+        try {
+            // Get parent genetics
+            $parent1 = DB::table('genetics')->where('id', $parent1_id)->first();
+            $parent2 = DB::table('genetics')->where('id', $parent2_id)->first();
+            
+            if (!$parent1 || !$parent2) {
+                return [
+                    'success' => false,
+                    'failure_reason' => 'One or both parent genetics not found'
+                ];
+            }
+            
+            // Check if player owns both genetics
+            $player = DB::table('game_players')->where('user_id', $user_id)->first();
+            if (!$player) {
+                return [
+                    'success' => false,
+                    'failure_reason' => 'Player not found'
+                ];
+            }
+            
+            $owns_parent1 = DB::table('player_genetics')
+                ->where('player_id', $player->id)
+                ->where('genetics_id', $parent1_id)
+                ->exists();
+                
+            $owns_parent2 = DB::table('player_genetics')
+                ->where('player_id', $player->id)
+                ->where('genetics_id', $parent2_id)
+                ->exists();
+                
+            if (!$owns_parent1 || !$owns_parent2) {
+                return [
+                    'success' => false,
+                    'failure_reason' => 'Player does not own both parent genetics'
+                ];
+            }
+            
+            // Calculate breeding success probability
+            $success_probability = $this->calculateBreedingSuccess($parent1, $parent2, $player);
+            
+            // Determine if breeding succeeds
+            $random = mt_rand(0, 100);
+            if ($random > $success_probability) {
+                return [
+                    'success' => false,
+                    'failure_reason' => 'Breeding attempt failed due to genetic incompatibility',
+                    'success_rate' => $success_probability
+                ];
+            }
+            
+            // Create offspring genetics
+            $offspring = $this->createOffspringGenetics($parent1, $parent2);
+            
+            // Insert new genetics into database
+            $offspring_id = DB::table('genetics')->insertGetId([
+                'name' => $offspring['name'],
+                'description' => $offspring['description'],
+                'generation' => max($parent1->generation, $parent2->generation) + 1,
+                'parent1_id' => $parent1_id,
+                'parent2_id' => $parent2_id,
+                'thc_min' => $offspring['thc_min'],
+                'thc_max' => $offspring['thc_max'],
+                'cbd_min' => $offspring['cbd_min'],
+                'cbd_max' => $offspring['cbd_max'],
+                'flowering_time_min' => $offspring['flowering_time_min'],
+                'flowering_time_max' => $offspring['flowering_time_max'],
+                'yield_indoor_min' => $offspring['yield_indoor_min'],
+                'yield_indoor_max' => $offspring['yield_indoor_max'],
+                'difficulty_level' => $offspring['difficulty_level'],
+                'flavor_profile' => $offspring['flavor_profile'],
+                'effects' => $offspring['effects'],
+                'terpenes' => $offspring['terpenes'],
+                'rarity' => $offspring['rarity'],
+                'stability' => $offspring['stability'],
+                'vigor' => $offspring['vigor'],
+                'disease_resistance' => $offspring['disease_resistance'],
+                'is_bred' => true,
+                'bred_by_user_id' => $user_id,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            // Give genetics to player
+            DB::table('player_genetics')->insert([
+                'player_id' => $player->id,
+                'genetics_id' => $offspring_id,
+                'acquired_at' => now(),
+                'acquired_method' => 'crossbreeding'
+            ]);
+            
+            // Record breeding history
+            DB::table('breeding_history')->insert([
+                'player_id' => $player->id,
+                'parent1_genetics_id' => $parent1_id,
+                'parent2_genetics_id' => $parent2_id,
+                'offspring_genetics_id' => $offspring_id,
+                'success_rate' => $success_probability,
+                'bred_at' => now()
+            ]);
+            
+            // Award experience and tokens
+            $exp_reward = 100 + ($offspring['rarity_value'] ?? 1) * 50;
+            $token_reward = 25 + ($offspring['rarity_value'] ?? 1) * 15;
+            
+            DB::table('game_players')
+                ->where('id', $player->id)
+                ->update([
+                    'experience' => DB::raw("experience + {$exp_reward}"),
+                    'tokens' => DB::raw("tokens + {$token_reward}")
+                ]);
+            
+            // Get the full offspring data
+            $full_offspring = DB::table('genetics')->where('id', $offspring_id)->first();
+            $full_offspring->bred_by_player = true;
+            
+            return [
+                'success' => true,
+                'offspring' => $full_offspring,
+                'experience_gained' => $exp_reward,
+                'tokens_gained' => $token_reward,
+                'breeding_notes' => $offspring['breeding_notes'] ?? 'Successful crossbreeding produced a new strain!'
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'failure_reason' => 'Breeding system error: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    private function calculateBreedingSuccess($parent1, $parent2, $player)
+    {
+        // Base success rate
+        $base_rate = 50;
+        
+        // Stability bonuses
+        $stability_bonus = (($parent1->stability + $parent2->stability) / 2) * 30;
+        
+        // Generation penalty (higher generations are harder to breed)
+        $generation_penalty = max($parent1->generation, $parent2->generation) * 3;
+        
+        // Player level bonus
+        $level_bonus = $player->level * 2;
+        
+        // Rarity affects difficulty
+        $rarity_values = ['common' => 0, 'uncommon' => 5, 'rare' => 10, 'epic' => 15, 'legendary' => 20];
+        $rarity_penalty = ($rarity_values[$parent1->rarity] ?? 0) + ($rarity_values[$parent2->rarity] ?? 0);
+        
+        // Same strain family bonus
+        $family_bonus = ($parent1->strain_family ?? '') === ($parent2->strain_family ?? '') ? 10 : 0;
+        
+        $final_rate = $base_rate + $stability_bonus + $level_bonus + $family_bonus - $generation_penalty - $rarity_penalty;
+        
+        return max(5, min(85, $final_rate));
+    }
+    
+    private function createOffspringGenetics($parent1, $parent2)
+    {
+        // Generate name for offspring
+        $name_parts = [
+            explode(' ', $parent1->name)[0],
+            explode(' ', $parent2->name)[0]
+        ];
+        $offspring_name = implode(' x ', $name_parts);
+        
+        // Inherit traits with variation
+        $offspring = [
+            'name' => $offspring_name,
+            'description' => "A hybrid cross between {$parent1->name} and {$parent2->name}",
+            'thc_min' => $this->inheritTrait($parent1->thc_min, $parent2->thc_min, 0.8, 1.2),
+            'thc_max' => $this->inheritTrait($parent1->thc_max, $parent2->thc_max, 0.8, 1.2),
+            'cbd_min' => $this->inheritTrait($parent1->cbd_min, $parent2->cbd_min, 0.5, 1.5),
+            'cbd_max' => $this->inheritTrait($parent1->cbd_max, $parent2->cbd_max, 0.5, 1.5),
+            'flowering_time_min' => round($this->inheritTrait($parent1->flowering_time_min, $parent2->flowering_time_min, 0.9, 1.1)),
+            'flowering_time_max' => round($this->inheritTrait($parent1->flowering_time_max, $parent2->flowering_time_max, 0.9, 1.1)),
+            'yield_indoor_min' => round($this->inheritTrait($parent1->yield_indoor_min, $parent2->yield_indoor_min, 0.8, 1.3)),
+            'yield_indoor_max' => round($this->inheritTrait($parent1->yield_indoor_max, $parent2->yield_indoor_max, 0.8, 1.3)),
+            'difficulty_level' => round(($parent1->difficulty_level + $parent2->difficulty_level) / 2),
+            'flavor_profile' => $this->inheritStringTrait($parent1->flavor_profile, $parent2->flavor_profile),
+            'effects' => $this->inheritStringTrait($parent1->effects, $parent2->effects),
+            'terpenes' => $this->inheritStringTrait($parent1->terpenes, $parent2->terpenes),
+            'stability' => $this->inheritTrait($parent1->stability, $parent2->stability, 0.7, 1.0),
+            'vigor' => $this->inheritTrait($parent1->vigor, $parent2->vigor, 0.8, 1.2),
+            'disease_resistance' => $this->inheritTrait($parent1->disease_resistance, $parent2->disease_resistance, 0.8, 1.2)
+        ];
+        
+        // Determine offspring rarity
+        $offspring['rarity'] = $this->determineOffspringRarity($parent1->rarity, $parent2->rarity);
+        $offspring['rarity_value'] = $this->getRarityValue($offspring['rarity']);
+        
+        return $offspring;
+    }
+    
+    private function inheritTrait($trait1, $trait2, $min_modifier = 0.8, $max_modifier = 1.2)
+    {
+        $average = ($trait1 + $trait2) / 2;
+        $variation = $average * (mt_rand($min_modifier * 100, $max_modifier * 100) / 100);
+        return max(0, $variation);
+    }
+    
+    private function inheritStringTrait($trait1, $trait2)
+    {
+        $traits1 = explode(', ', $trait1);
+        $traits2 = explode(', ', $trait2);
+        
+        // Combine traits with some randomness
+        $combined = array_merge($traits1, $traits2);
+        $combined = array_unique(array_filter($combined));
+        
+        // Randomly select 2-4 traits
+        shuffle($combined);
+        $selected_count = min(count($combined), rand(2, 4));
+        
+        return implode(', ', array_slice($combined, 0, $selected_count));
+    }
+    
+    private function determineOffspringRarity($rarity1, $rarity2)
+    {
+        $rarity_values = ['common' => 1, 'uncommon' => 2, 'rare' => 3, 'epic' => 4, 'legendary' => 5];
+        $rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        
+        $avg_rarity = ($rarity_values[$rarity1] + $rarity_values[$rarity2]) / 2;
+        
+        // Small chance for mutation to higher rarity
+        if (mt_rand(1, 100) <= 10) {
+            $avg_rarity += 1;
+        }
+        
+        // Small chance for degradation
+        if (mt_rand(1, 100) <= 5) {
+            $avg_rarity -= 1;
+        }
+        
+        $avg_rarity = max(1, min(5, round($avg_rarity)));
+        
+        return $rarities[$avg_rarity - 1];
+    }
+    
+    private function getRarityValue($rarity)
+    {
+        $values = ['common' => 1, 'uncommon' => 2, 'rare' => 3, 'epic' => 4, 'legendary' => 5];
+        return $values[$rarity] ?? 1;
+    }
 
     private static function getRandomClimatePreference()
     {

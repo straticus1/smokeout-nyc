@@ -1,0 +1,126 @@
+# SmokeoutNYC Production Inventory
+
+[web_servers]
+# These will be populated by dynamic inventory or manually
+# web-1.smokeout.nyc ansible_host=10.0.11.100
+# web-2.smokeout.nyc ansible_host=10.0.12.100
+# web-3.smokeout.nyc ansible_host=10.0.13.100
+
+[web_servers:vars]
+ansible_user=ec2-user
+ansible_ssh_private_key_file=~/.ssh/smokeout-nyc-key.pem
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+# Application configuration
+app_name=smokeout-nyc
+domain_name=smokeout.nyc
+environment=production
+debug_mode=false
+
+# Database configuration
+db_host=smokeout-nyc-production-db.cluster-xyz.us-east-1.rds.amazonaws.com
+db_name=smokeout_nyc
+db_username=smokeout_admin
+db_port=3306
+
+# Redis configuration  
+redis_host=smokeout-nyc-production-redis.abc123.cache.amazonaws.com
+redis_port=6379
+
+# AWS Configuration
+aws_region=us-east-1
+s3_bucket=smokeout-nyc-production-app-storage
+
+# Load balancer configuration
+target_group_arn=arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/smokeout-nyc-production-web-tg/1234567890abcdef
+
+# SSL Configuration
+ssl_enabled=true
+
+# Performance settings
+php_memory_limit=256M
+php_max_execution_time=60
+php_upload_max_filesize=50M
+php_post_max_size=50M
+
+# WebSocket configuration
+websocket_port=8080
+websocket_workers=4
+
+# Monitoring configuration
+enable_monitoring=true
+log_level=warning
+
+# Security settings
+allowed_ips=[]  # Empty means all IPs allowed, specify for restriction
+fail2ban_enabled=true
+firewall_enabled=true
+
+# Backup configuration
+backup_enabled=true
+backup_retention_days=30
+
+[all:vars]
+# Common variables for all hosts
+ansible_python_interpreter=/usr/bin/python3
+
+# Deployment settings
+deployment_user=ec2-user
+deployment_group=ec2-user
+app_dir=/var/www/smokeout-nyc
+logs_dir=/var/www/smokeout-nyc/logs
+
+# Node.js settings
+node_version=18
+npm_registry=https://registry.npmjs.org/
+
+# PHP settings
+php_version=8.1
+composer_version=latest
+
+# Database settings (non-sensitive)
+db_charset=utf8mb4
+db_collation=utf8mb4_unicode_ci
+
+# Session configuration
+session_driver=redis
+session_lifetime=120
+session_cookie_secure=true
+session_cookie_httponly=true
+
+# Queue configuration
+queue_driver=redis
+queue_connection=default
+
+# Cache configuration
+cache_driver=redis
+cache_prefix=smokeout_nyc
+
+# Mail configuration
+mail_driver=smtp
+mail_host=smtp.amazonaws.com
+mail_port=587
+mail_encryption=tls
+
+# Logging configuration
+log_channel=cloudwatch
+log_max_files=30
+
+# Gaming configuration
+game_tick_rate=30
+max_concurrent_games=1000
+websocket_timeout=3600
+
+# API configuration
+api_rate_limit=1000
+api_timeout=30
+cors_origins=https://smokeout.nyc
+
+# Security configuration
+bcrypt_rounds=12
+jwt_ttl=60
+password_timeout=10800
+
+# Asset configuration
+asset_url=https://smokeout.nyc
+mix_url=https://smokeout.nyc

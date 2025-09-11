@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../services/WeatherEffectsService.php';
 
 class GamePlayer {
     public $id;
@@ -258,12 +259,16 @@ class Plant {
     }
     
     public function updateStage() {
-        // Update plant stage based on time elapsed
+        // Update plant stage based on time elapsed with weather effects
         $now = time();
         $planted = strtotime($this->planted_at);
         $harvest_ready = strtotime($this->harvest_ready_at);
         
-        $elapsed_ratio = ($now - $planted) / ($harvest_ready - $planted);
+        // Apply weather effects to growth rate
+        $base_growth_rate = ($now - $planted) / ($harvest_ready - $planted);
+        $weather_adjusted_growth_rate = WeatherEffectsService::applyWeatherEffectsToPlant($this->id, $base_growth_rate);
+        
+        $elapsed_ratio = $weather_adjusted_growth_rate;
         
         $new_stage = 'germination';
         if ($elapsed_ratio >= 1.0) {
@@ -284,6 +289,113 @@ class Plant {
             );
             $this->stage = $new_stage;
         }
+        
+        // Also check for weather-induced health changes
+        $this->updateHealthFromWeather();
+    }
+    
+    public function updateHealthFromWeather() {
+        $db = self::getDB();
+        $activeWeatherEffects = WeatherEffectsService::getActiveWeatherEffects();
+        
+        $healthChange = 0;
+        foreach ($activeWeatherEffects as $effect) {
+            // Different weather affects health differently
+            switch ($effect['type']) {
+                case 'heat_wave':
+                    $healthChange -= 0.02 * $effect['severity_multiplier']; // Heat stress
+                    break;
+                case 'cold_snap':
+                    $healthChange -= 0.03 * $effect['severity_multiplier']; // Cold damage
+                    break;
+                case 'drought':
+                    $healthChange -= 0.04 * $effect['severity_multiplier']; // Dehydration
+                    break;
+                case 'rain_storm':
+                    $healthChange -= 0.01 * $effect['severity_multiplier']; // Potential overwatering
+                    break;
+                case 'sunny':
+                    $healthChange += 0.01 * $effect['severity_multiplier']; // Good conditions
+                    break;
+            }
+        }
+        
+        if ($healthChange != 0) {
+            $newHealth = max(0, min(1.0, $this->health + $healthChange));
+            
+            $db->execute(
+                "UPDATE plants SET health = ? WHERE id = ?",
+                [$newHealth, $this->id]
+            );
+            
+            $this->health = $newHealth;
+        }
+    }
+    
+    public function waterPlant() {
+        $db = self::getDB();
+        
+        // Base watering benefit
+        $healthBoost = 0.05;
+        
+        // Check weather conditions - some weather makes watering more/less effective
+        $activeEffects = WeatherEffectsService::getActiveWeatherEffects();
+        foreach ($activeEffects as $effect) {
+            switch ($effect['type']) {
+                case 'drought':
+                case 'heat_wave':
+                    $healthBoost *= 1.5; // More effective during dry conditions
+                    break;
+                case 'rain_storm':
+                    $healthBoost *= 0.5; // Less effective during rain
+                    break;
+            }
+        }
+        
+        $newHealth = min(1.0, $this->health + $healthBoost);
+        
+        $db->execute(
+            "UPDATE plants SET health = ?, updated_at = NOW() WHERE id = ?",
+            [$newHealth, $this->id]
+        );
+        
+        $this->health = $newHealth;
+        
+        return [
+            'success' => true,
+            'health_boost' => $healthBoost,
+            'new_health' => $newHealth
+        ];
+    }
+    
+    public function getWeatherImpactSummary() {
+        $db = self::getDB();
+        
+        // Get weather impacts for this plant
+        $impacts = $db->fetchAll(
+            "SELECT * FROM weather_plant_impacts 
+             WHERE plant_id = ? 
+             ORDER BY recorded_at DESC 
+             LIMIT 10",
+            [$this->id]
+        );
+        
+        $totalGrowthImpact = 0;
+        $totalYieldImpact = 0;
+        $diseaseRisk = 0;
+        
+        foreach ($impacts as $impact) {
+            $totalGrowthImpact += $impact['growth_modifier_applied'] - 1.0;
+            $totalYieldImpact += $impact['yield_modifier_applied'] - 1.0;
+            $diseaseRisk += $impact['disease_risk_applied'];
+        }
+        
+        return [
+            'growth_impact' => $totalGrowthImpact,
+            'yield_impact' => $totalYieldImpact,
+            'disease_risk' => $diseaseRisk,
+            'recent_impacts' => $impacts
+        ];
     }
 }
 
