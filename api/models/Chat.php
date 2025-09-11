@@ -107,7 +107,7 @@ class Chat {
     /**
      * Get online users in a room
      */
-    public function getOnlineUsers($roomId) {
+    public function getRoomOnlineUsers($roomId) {
         $sql = "SELECT u.id, u.username, ua.avatar_url, ua.initials, ua.background_color, cp.role
                 FROM chat_participants cp
                 JOIN users u ON cp.user_id = u.id

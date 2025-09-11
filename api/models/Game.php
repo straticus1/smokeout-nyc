@@ -299,12 +299,42 @@ class Location {
     public $max_plants; // growing slots available
     public $is_unlocked_by_default;
     
+    private static function getDB() {
+        return DB::getInstance();
+    }
+    
     public static function getAvailableForPlayer($player_id) {
-        // Get locations available to player
+        $db = self::getDB();
+        
+        // Get player info to check level and reputation
+        $player = GamePlayer::getByUserId($player_id);
+        if (!$player) {
+            return [];
+        }
+        
+        return $db->fetchAll(
+            "SELECT * FROM growing_locations 
+             WHERE (required_level <= ? OR required_level IS NULL) 
+             AND (required_reputation <= ? OR required_reputation IS NULL)
+             AND is_active = 1
+             ORDER BY required_level, name",
+            [$player->level, $player->reputation]
+        );
     }
     
     public static function getById($id) {
-        // Get location by ID
+        $db = self::getDB();
+        return $db->fetchOne(
+            "SELECT * FROM growing_locations WHERE id = ? AND is_active = 1",
+            [$id]
+        );
+    }
+    
+    public static function getAll() {
+        $db = self::getDB();
+        return $db->fetchAll(
+            "SELECT * FROM growing_locations WHERE is_active = 1 ORDER BY required_level, name"
+        );
     }
 }
 
@@ -321,16 +351,77 @@ class Sale {
     public $reputation_gained;
     public $sold_at;
     
+    private static function getDB() {
+        return DB::getInstance();
+    }
+    
     public static function create($player_id, $plant_id, $location_id) {
-        // Create new sale record
+        $db = self::getDB();
+        
+        // Get plant and location data
+        $plant = Plant::getById($plant_id);
+        $location = Location::getById($location_id);
+        
+        if (!$plant || !$location) {
+            throw new Exception("Invalid plant or location");
+        }
+        
+        // Calculate pricing
+        $base_price = 15.0; // Base price per gram
+        $location_modifier = $location['market_modifier'] ?? 1.0;
+        $quality_modifier = $plant['final_quality'] ?? 0.8;
+        
+        $final_price = $base_price * $plant['final_weight'] * $location_modifier * $quality_modifier;
+        
+        // Calculate rewards
+        $experience_gained = floor($final_price * 0.1); // 10% of sale price
+        $reputation_gained = rand(1, 5);
+        
+        // Create sale record
+        $db->execute(
+            "INSERT INTO sales (player_id, plant_id, location_id, quantity, quality, 
+                               base_price, final_price, experience_gained, reputation_gained, sold_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+            [$player_id, $plant_id, $location_id, $plant['final_weight'], $plant['final_quality'],
+             $base_price, $final_price, $experience_gained, $reputation_gained]
+        );
+        
+        $sale_id = $db->lastInsertId();
+        
+        // Update player stats
+        $player = GamePlayer::getByUserId($player_id);
+        $player->addTokens(floor($final_price));
+        $player->addExperience($experience_gained);
+        
+        // Log transaction
+        GameTransaction::log($player->id, 'plant_sale', $final_price, 
+                           "Sold plant for " . number_format($final_price, 2) . " tokens", $sale_id);
+        
+        return $sale_id;
     }
     
     public static function getByPlayerId($player_id) {
-        // Get sales history for player
+        $db = self::getDB();
+        return $db->fetchAll(
+            "SELECT s.*, p.strain_id, st.name as strain_name, l.name as location_name
+             FROM sales s
+             JOIN plants p ON s.plant_id = p.id
+             JOIN strains st ON p.strain_id = st.id
+             JOIN growing_locations l ON s.location_id = l.id
+             WHERE s.player_id = ?
+             ORDER BY s.sold_at DESC
+             LIMIT 50",
+            [$player_id]
+        );
+    }
+    
+    public static function getById($id) {
+        $db = self::getDB();
+        return $db->fetchOne("SELECT * FROM sales WHERE id = ?", [$id]);
     }
     
     public function calculatePrice($base_price, $quality, $location_modifier) {
-        // Calculate final sale price
+        return $base_price * $quality * $location_modifier;
     }
 }
 
@@ -344,8 +435,89 @@ class Achievement {
     public $reward_experience;
     public $unlock_location_id;
     
+    private static function getDB() {
+        return DB::getInstance();
+    }
+    
+    public static function getAll() {
+        $db = self::getDB();
+        return $db->fetchAll(
+            "SELECT * FROM achievements WHERE is_active = 1 ORDER BY requirement_value"
+        );
+    }
+    
     public static function checkPlayerAchievements($player_id) {
-        // Check and award new achievements
+        $db = self::getDB();
+        $player = GamePlayer::getByUserId($player_id);
+        
+        if (!$player) {
+            return [];
+        }
+        
+        $new_achievements = [];
+        
+        // Get all achievements not yet earned by player
+        $achievements = $db->fetchAll(
+            "SELECT a.* FROM achievements a
+             WHERE a.is_active = 1 
+             AND a.id NOT IN (
+                 SELECT achievement_id FROM player_achievements 
+                 WHERE player_id = ?
+             )",
+            [$player->id]
+        );
+        
+        foreach ($achievements as $achievement) {
+            $earned = false;
+            
+            switch ($achievement['type']) {
+                case 'level_milestone':
+                    $earned = $player->level >= $achievement['requirement_value'];
+                    break;
+                    
+                case 'sales_milestone':
+                    $total_sales = $db->fetchColumn(
+                        "SELECT COUNT(*) FROM sales WHERE player_id = ?",
+                        [$player->id]
+                    );
+                    $earned = $total_sales >= $achievement['requirement_value'];
+                    break;
+                    
+                case 'tokens_earned':
+                    $total_tokens = $db->fetchColumn(
+                        "SELECT COALESCE(SUM(amount), 0) FROM game_transactions 
+                         WHERE player_id = ? AND type IN ('plant_sale', 'token_purchase')",
+                        [$player->id]
+                    );
+                    $earned = $total_tokens >= $achievement['requirement_value'];
+                    break;
+                    
+                case 'strain_collection':
+                    $strains_grown = $db->fetchColumn(
+                        "SELECT COUNT(DISTINCT strain_id) FROM plants WHERE player_id = ?",
+                        [$player->id]
+                    );
+                    $earned = $strains_grown >= $achievement['requirement_value'];
+                    break;
+            }
+            
+            if ($earned) {
+                // Award achievement
+                PlayerAchievement::create($player->id, $achievement['id']);
+                
+                // Award rewards
+                if ($achievement['reward_tokens'] > 0) {
+                    $player->addTokens($achievement['reward_tokens']);
+                }
+                if ($achievement['reward_experience'] > 0) {
+                    $player->addExperience($achievement['reward_experience']);
+                }
+                
+                $new_achievements[] = $achievement;
+            }
+        }
+        
+        return $new_achievements;
     }
 }
 
@@ -355,8 +527,51 @@ class PlayerAchievement {
     public $achievement_id;
     public $earned_at;
     
+    private static function getDB() {
+        return DB::getInstance();
+    }
+    
+    public static function create($player_id, $achievement_id) {
+        $db = self::getDB();
+        
+        // Check if already earned
+        $existing = $db->fetchOne(
+            "SELECT id FROM player_achievements WHERE player_id = ? AND achievement_id = ?",
+            [$player_id, $achievement_id]
+        );
+        
+        if ($existing) {
+            return $existing['id'];
+        }
+        
+        $db->execute(
+            "INSERT INTO player_achievements (player_id, achievement_id, earned_at, created_at)
+             VALUES (?, ?, NOW(), NOW())",
+            [$player_id, $achievement_id]
+        );
+        
+        return $db->lastInsertId();
+    }
+    
     public static function getByPlayerId($player_id) {
-        // Get player's earned achievements
+        $db = self::getDB();
+        return $db->fetchAll(
+            "SELECT pa.*, a.name, a.description, a.reward_tokens, a.reward_experience
+             FROM player_achievements pa
+             JOIN achievements a ON pa.achievement_id = a.id
+             WHERE pa.player_id = ?
+             ORDER BY pa.earned_at DESC",
+            [$player_id]
+        );
+    }
+    
+    public static function hasAchievement($player_id, $achievement_id) {
+        $db = self::getDB();
+        $result = $db->fetchOne(
+            "SELECT id FROM player_achievements WHERE player_id = ? AND achievement_id = ?",
+            [$player_id, $achievement_id]
+        );
+        return !empty($result);
     }
 }
 
@@ -413,12 +628,86 @@ class Market {
     public $price_modifier;
     public $updated_at;
     
+    private static function getDB() {
+        return DB::getInstance();
+    }
+    
     public static function updateMarketConditions() {
-        // Update market dynamics
+        $db = self::getDB();
+        
+        // Update market conditions daily
+        $locations = Location::getAll();
+        $strains = Strain::getAvailableForLevel(100); // Get all strains
+        
+        foreach ($locations as $location) {
+            foreach ($strains as $strain) {
+                // Generate random market fluctuations
+                $demand_level = rand(1, 100) / 100; // 0.01 to 1.00
+                $supply_level = rand(1, 100) / 100;
+                
+                // Calculate price modifier based on supply/demand
+                $price_modifier = ($demand_level / $supply_level) * (rand(80, 120) / 100);
+                $price_modifier = max(0.5, min(2.0, $price_modifier)); // Clamp between 0.5x and 2.0x
+                
+                // Update or insert market condition
+                $existing = $db->fetchOne(
+                    "SELECT id FROM market_conditions WHERE location_id = ? AND strain_id = ?",
+                    [$location['id'], $strain['id']]
+                );
+                
+                if ($existing) {
+                    $db->execute(
+                        "UPDATE market_conditions SET demand_level = ?, supply_level = ?, 
+                         price_modifier = ?, updated_at = NOW() WHERE id = ?",
+                        [$demand_level, $supply_level, $price_modifier, $existing['id']]
+                    );
+                } else {
+                    $db->execute(
+                        "INSERT INTO market_conditions (location_id, strain_id, demand_level, 
+                         supply_level, price_modifier, updated_at, created_at) 
+                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$location['id'], $strain['id'], $demand_level, $supply_level, $price_modifier]
+                    );
+                }
+            }
+        }
     }
     
     public static function getCurrentPrices($location_id) {
-        // Get current market prices for location
+        $db = self::getDB();
+        return $db->fetchAll(
+            "SELECT mc.*, s.name as strain_name, s.type as strain_type
+             FROM market_conditions mc
+             JOIN strains s ON mc.strain_id = s.id
+             WHERE mc.location_id = ?
+             ORDER BY s.name",
+            [$location_id]
+        );
+    }
+    
+    public static function getPriceModifier($location_id, $strain_id) {
+        $db = self::getDB();
+        $result = $db->fetchOne(
+            "SELECT price_modifier FROM market_conditions 
+             WHERE location_id = ? AND strain_id = ?",
+            [$location_id, $strain_id]
+        );
+        
+        return $result ? $result['price_modifier'] : 1.0;
+    }
+    
+    public static function getTopDemandLocations($limit = 5) {
+        $db = self::getDB();
+        return $db->fetchAll(
+            "SELECT l.name as location_name, AVG(mc.price_modifier) as avg_price_modifier,
+                    AVG(mc.demand_level) as avg_demand
+             FROM market_conditions mc
+             JOIN growing_locations l ON mc.location_id = l.id
+             GROUP BY mc.location_id, l.name
+             ORDER BY avg_price_modifier DESC
+             LIMIT ?",
+            [$limit]
+        );
     }
 }
 ?>

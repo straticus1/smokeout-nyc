@@ -16,11 +16,10 @@ import { VRButton, ARButton, XR, Controllers, Hands } from '@react-three/xr';
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
 import { 
-  VrIcon, 
   EyeIcon, 
   CubeIcon,
-  ArrowsExpandIcon,
-  AdjustmentsIcon,
+  ArrowsRightLeftIcon,
+  Cog6ToothIcon,
   PlayIcon
 } from '@heroicons/react/24/outline';
 
@@ -487,7 +486,7 @@ const ARVRFoundation: React.FC<ARVRFoundationProps> = ({
           onClick={() => onModeChange?.('vr')}
           className={`p-2 rounded-lg ${mode === 'vr' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300'} hover:bg-purple-700 transition-colors`}
         >
-          <VrIcon className="w-5 h-5" />
+          <EyeIcon className="w-5 h-5" />
         </motion.button>
         
         <motion.button
@@ -496,7 +495,7 @@ const ARVRFoundation: React.FC<ARVRFoundationProps> = ({
           onClick={handleFullscreen}
           className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors"
         >
-          <ArrowsExpandIcon className="w-5 h-5" />
+          <ArrowsRightLeftIcon className="w-5 h-5" />
         </motion.button>
       </div>
 
