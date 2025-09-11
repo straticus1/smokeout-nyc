@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Register: React.FC = () => {
+  const { register } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     firstName: '',
@@ -68,30 +71,16 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-          phone_number: formData.phoneNumber,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          interests: formData.interests
-        }),
+      const success = await register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phoneNumber,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // Registration successful - redirect to verification
-        alert('Registration successful! Please check your email and phone for verification codes.');
-        // TODO: Redirect to verification page
-      } else {
-        setError(data.error || 'Registration failed');
+      if (success) {
+        // Registration successful - redirect to login page  
+        navigate('/login?message=Registration successful! Please check your email for verification.');
       }
     } catch (error) {
       setError('Registration failed. Please try again.');

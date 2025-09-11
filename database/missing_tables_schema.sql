@@ -20,8 +20,7 @@ CREATE TABLE IF NOT EXISTS api_access_logs (
     request_data JSON NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user_created (user_id, created_at),
-    INDEX idx_endpoint_created (endpoint, created_at),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    INDEX idx_endpoint_created (endpoint, created_at)
 );
 
 -- User sessions table (referenced by authenticate function)
@@ -36,195 +35,176 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_session_token (session_token),
-    INDEX idx_user_expires (user_id, expires_at),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    INDEX idx_user_expires (user_id, expires_at)
 );
 
--- Missing users table columns (if not exists)
-ALTER TABLE users 
-ADD COLUMN IF NOT EXISTS role ENUM('user', 'store_owner', 'admin', 'super_admin') DEFAULT 'user',
-ADD COLUMN IF NOT EXISTS credits DECIMAL(10,2) DEFAULT 0.00,
-ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS verification_token VARCHAR(128) NULL,
-ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(50) NULL,
-ADD COLUMN IF NOT EXISTS oauth_id VARCHAR(255) NULL,
-ADD COLUMN IF NOT EXISTS last_login TIMESTAMP NULL;
-
--- Store closure risk assessments
+-- Risk assessments table
 CREATE TABLE IF NOT EXISTS risk_assessments (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    assessment_type VARCHAR(50) NOT NULL, -- 'dispensary_risk', 'closure_risk', 'enforcement_risk'
-    latitude DECIMAL(10, 8) NULL,
-    longitude DECIMAL(11, 8) NULL,
-    city VARCHAR(100) NULL,
-    state VARCHAR(50) NULL,
-    risk_score DECIMAL(5,3) NOT NULL, -- 0.000 to 1.000
+    location_lat DECIMAL(10, 7) NOT NULL,
+    location_lng DECIMAL(10, 7) NOT NULL,
+    risk_type ENUM('dispensary', 'closure', 'enforcement') NOT NULL,
+    risk_score DECIMAL(5, 2) NOT NULL,
     risk_factors JSON NULL,
-    ai_model_version VARCHAR(20) DEFAULT 'v1.0',
-    confidence_level DECIMAL(5,3) DEFAULT 0.80,
+    assessment_data JSON NULL,
     expires_at TIMESTAMP NULL,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_location (latitude, longitude),
-    INDEX idx_city_state (city, state),
-    INDEX idx_assessment_type (assessment_type),
-    INDEX idx_expires (expires_at)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_location (location_lat, location_lng),
+    INDEX idx_risk_type_created (risk_type, created_at)
 );
 
--- User membership tiers and tracking
+-- Membership tiers
 CREATE TABLE IF NOT EXISTS membership_tiers (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    tier_name VARCHAR(50) NOT NULL UNIQUE,
-    display_name VARCHAR(100) NOT NULL,
+    name VARCHAR(50) NOT NULL,
     description TEXT NULL,
-    price_monthly DECIMAL(8,2) NOT NULL,
-    price_yearly DECIMAL(8,2) NULL,
-    limits_config JSON NULL, -- Store usage limits like ai_assessments_per_month
-    features JSON NULL, -- List of enabled features
+    price_monthly DECIMAL(10, 2) NOT NULL,
+    price_yearly DECIMAL(10, 2) NULL,
+    features JSON NULL,
+    max_searches INT NULL,
+    max_alerts INT NULL,
+    priority_support BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- User membership subscriptions
+-- User memberships
 CREATE TABLE IF NOT EXISTS user_memberships (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     tier_id INT NOT NULL,
-    status ENUM('active', 'cancelled', 'expired', 'suspended') DEFAULT 'active',
-    starts_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NULL,
+    subscription_id VARCHAR(128) NULL,
+    payment_method ENUM('paypal', 'stripe', 'bitcoin') NOT NULL,
+    status ENUM('active', 'cancelled', 'expired', 'pending') DEFAULT 'pending',
+    starts_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    auto_renew BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_user_status (user_id, status),
-    INDEX idx_expires (expires_at),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (tier_id) REFERENCES membership_tiers(id)
-);
-
--- Revenue transactions for shop owners and platform
-CREATE TABLE IF NOT EXISTS revenue_transactions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    shop_owner_id INT NULL,
-    user_id INT NULL,
-    transaction_type VARCHAR(50) NOT NULL, -- 'api_usage', 'membership_fee', 'premium_feature'
-    gross_amount DECIMAL(10,2) NOT NULL,
-    platform_fee_amount DECIMAL(10,2) DEFAULT 0.00,
-    net_amount DECIMAL(10,2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'USD',
-    status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
-    payment_method VARCHAR(50) NULL,
-    payment_reference VARCHAR(255) NULL,
-    description TEXT NULL,
-    metadata JSON NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_shop_owner (shop_owner_id),
-    INDEX idx_user (user_id),
-    INDEX idx_type_status (transaction_type, status),
-    INDEX idx_created (created_at),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    INDEX idx_expires (expires_at)
 );
 
 -- Politicians table for donation system
 CREATE TABLE IF NOT EXISTS politicians (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    position VARCHAR(255) NOT NULL, -- 'Mayor', 'Governor', 'Senator', etc.
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    party VARCHAR(100) NULL,
+    office VARCHAR(255) NOT NULL,
+    party ENUM('Democratic', 'Republican', 'Independent', 'Other') NULL,
     bio TEXT NULL,
-    photo_url VARCHAR(500) NULL,
-    website_url VARCHAR(500) NULL,
-    donations_enabled BOOLEAN DEFAULT FALSE,
-    min_donation_amount DECIMAL(8,2) DEFAULT 5.00,
-    max_donation_amount DECIMAL(8,2) DEFAULT 2800.00,
-    processing_fee_percent DECIMAL(5,2) DEFAULT 3.00,
-    campaign_contact_email VARCHAR(255) NULL,
-    donation_instructions TEXT NULL,
+    photo_url VARCHAR(512) NULL,
+    donation_url VARCHAR(512) NULL,
+    stance_on_cannabis ENUM('supportive', 'neutral', 'opposed', 'unknown') DEFAULT 'unknown',
+    cannabis_voting_record JSON NULL,
+    min_donation DECIMAL(10, 2) DEFAULT 1.00,
+    max_donation DECIMAL(10, 2) DEFAULT 2900.00,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_slug (slug),
-    INDEX idx_active (is_active)
+    INDEX idx_office_active (office, is_active)
 );
 
--- Insert default membership tiers
-INSERT IGNORE INTO membership_tiers (tier_name, display_name, description, price_monthly, price_yearly, limits_config, features) VALUES
-('free', 'Free Tier', 'Basic access with limited features', 0.00, 0.00, 
- '{"ai_assessments_per_month": 3, "api_calls_per_day": 100}', 
- '["basic_search", "store_listings"]'),
- 
-('pro', 'Pro Membership', 'Professional features for business users', 29.99, 299.99,
- '{"ai_assessments_per_month": 50, "api_calls_per_day": 1000, "advanced_analytics": true}',
- '["basic_search", "store_listings", "ai_risk_assessment", "advanced_analytics", "priority_support"]'),
- 
-('enterprise', 'Enterprise', 'Full access for large organizations', 99.99, 999.99,
- '{"ai_assessments_per_month": -1, "api_calls_per_day": -1, "white_label": true}',
- '["*"]');
+-- Revenue transactions table
+CREATE TABLE IF NOT EXISTS revenue_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    type ENUM('donation', 'membership', 'tokens', 'premium_feature', 'advertisement') NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    fee_amount DECIMAL(10, 2) DEFAULT 0.00,
+    net_amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'USD',
+    payment_method VARCHAR(50) NULL,
+    payment_id VARCHAR(128) NULL,
+    reference_id INT NULL,
+    description TEXT NULL,
+    status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_created (user_id, created_at),
+    INDEX idx_type_status (type, status),
+    INDEX idx_payment_id (payment_id)
+);
 
--- Insert sample politician data
-INSERT IGNORE INTO politicians (name, position, slug, party, donations_enabled, bio) VALUES
-('Eric Adams', 'Mayor of New York City', 'eric-adams', 'Democratic', TRUE, 'Current Mayor of New York City, focused on public safety and economic development.'),
-('Kathy Hochul', 'Governor of New York', 'kathy-hochul', 'Democratic', TRUE, 'Governor of New York State, advocate for cannabis reform and business development.'),
-('Chuck Schumer', 'U.S. Senator', 'chuck-schumer', 'Democratic', TRUE, 'Senior U.S. Senator from New York, Senate Majority Leader.');
-
--- Property listings for market analysis
+-- Property listings table (for market data)
 CREATE TABLE IF NOT EXISTS property_listings (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    address VARCHAR(500) NOT NULL,
-    city VARCHAR(100) NOT NULL,
-    state VARCHAR(50) NOT NULL,
-    zip_code VARCHAR(20) NULL,
-    latitude DECIMAL(10, 8) NULL,
-    longitude DECIMAL(11, 8) NULL,
-    property_type ENUM('retail', 'warehouse', 'office', 'mixed_use') DEFAULT 'retail',
-    square_footage INT NULL,
-    rent_price DECIMAL(10,2) NULL,
-    sale_price DECIMAL(12,2) NULL,
-    market_score DECIMAL(3,2) DEFAULT 0.50, -- Market attractiveness 0.00 to 1.00
-    zoning_type VARCHAR(100) NULL,
-    is_available BOOLEAN DEFAULT TRUE,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_location (latitude, longitude),
-    INDEX idx_city_state (city, state),
-    INDEX idx_available (is_available),
-    INDEX idx_price_range (rent_price, sale_price)
-);
-
--- Shop locations for competition analysis  
-CREATE TABLE IF NOT EXISTS shop_locations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    address VARCHAR(500) NOT NULL,
-    city VARCHAR(100) NOT NULL,
-    state VARCHAR(50) NOT NULL,
-    zip_code VARCHAR(20) NULL,
-    latitude DECIMAL(10, 8) NULL,
-    longitude DECIMAL(11, 8) NULL,
-    location_type ENUM('physical_store', 'delivery_only', 'manufacturing') DEFAULT 'physical_store',
-    business_type VARCHAR(100) NULL,
-    status ENUM('active', 'closed', 'temporary_closed', 'pending') DEFAULT 'active',
-    last_verified TIMESTAMP NULL,
+    address VARCHAR(512) NOT NULL,
+    latitude DECIMAL(10, 7) NOT NULL,
+    longitude DECIMAL(10, 7) NOT NULL,
+    property_type ENUM('retail', 'commercial', 'warehouse', 'office') NOT NULL,
+    size_sqft INT NULL,
+    rent_monthly DECIMAL(10, 2) NULL,
+    sale_price DECIMAL(12, 2) NULL,
+    zoning VARCHAR(50) NULL,
+    cannabis_friendly BOOLEAN NULL,
+    available_date DATE NULL,
+    listing_url VARCHAR(512) NULL,
+    contact_info JSON NULL,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_location (latitude, longitude),
-    INDEX idx_city_state (city, state),
-    INDEX idx_status (status),
-    INDEX idx_business_type (business_type)
+    INDEX idx_type_active (property_type, is_active),
+    INDEX idx_price_range (rent_monthly, sale_price)
 );
 
--- Market data for economic analysis
+-- Shop locations table for competitive analysis
+CREATE TABLE IF NOT EXISTS shop_locations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    address VARCHAR(512) NOT NULL,
+    latitude DECIMAL(10, 7) NOT NULL,
+    longitude DECIMAL(10, 7) NOT NULL,
+    shop_type ENUM('smoke_shop', 'dispensary', 'cbd_store', 'head_shop') NOT NULL,
+    license_status ENUM('licensed', 'unlicensed', 'pending', 'revoked', 'unknown') DEFAULT 'unknown',
+    license_number VARCHAR(128) NULL,
+    phone VARCHAR(20) NULL,
+    website VARCHAR(512) NULL,
+    hours JSON NULL,
+    products JSON NULL,
+    average_rating DECIMAL(3, 2) NULL,
+    review_count INT DEFAULT 0,
+    last_inspection_date DATE NULL,
+    violations_count INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_location (latitude, longitude),
+    INDEX idx_type_status (shop_type, license_status),
+    INDEX idx_active (is_active)
+);
+
+-- Market data table for economic analysis
 CREATE TABLE IF NOT EXISTS market_data (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    region VARCHAR(100) NOT NULL, -- 'NYC', 'Brooklyn', 'Manhattan', etc.
-    metric_name VARCHAR(100) NOT NULL, -- 'average_rent', 'foot_traffic', 'competition_density'
-    metric_value DECIMAL(15,4) NOT NULL,
-    metric_unit VARCHAR(50) NULL, -- 'dollars', 'count', 'percentage'
-    data_source VARCHAR(100) NULL,
-    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_type ENUM('pricing', 'demand', 'supply', 'competition', 'regulation') NOT NULL,
+    geographic_scope ENUM('city', 'borough', 'neighborhood', 'zipcode') NOT NULL,
+    scope_identifier VARCHAR(50) NOT NULL,
+    metric_name VARCHAR(100) NOT NULL,
+    metric_value DECIMAL(15, 4) NOT NULL,
+    unit VARCHAR(50) NULL,
+    data_source VARCHAR(255) NULL,
+    confidence_score DECIMAL(3, 2) NULL,
+    valid_from TIMESTAMP NOT NULL,
+    valid_until TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_region_metric (region, metric_name),
-    INDEX idx_recorded (recorded_at)
+    INDEX idx_type_scope (data_type, geographic_scope, scope_identifier),
+    INDEX idx_metric_date (metric_name, valid_from),
+    INDEX idx_validity (valid_from, valid_until)
 );
+
+-- Insert default membership tiers
+INSERT IGNORE INTO membership_tiers (id, name, description, price_monthly, price_yearly, features, max_searches, max_alerts) VALUES
+(1, 'Free', 'Basic access to smoke shop data', 0.00, 0.00, '["Basic search", "Limited alerts"]', 10, 3),
+(2, 'Pro', 'Enhanced features for enthusiasts', 9.99, 99.99, '["Unlimited search", "Real-time alerts", "Risk assessment", "Police proximity"]', NULL, NULL),
+(3, 'Premium', 'Full access with advanced analytics', 19.99, 199.99, '["All Pro features", "Market analytics", "Predictive insights", "API access", "Priority support"]', NULL, NULL);
+
+-- Insert sample politicians (NYC focus)
+INSERT IGNORE INTO politicians (name, office, party, stance_on_cannabis, min_donation, max_donation) VALUES
+('Kathy Hochul', 'Governor of New York', 'Democratic', 'supportive', 5.00, 2900.00),
+('Eric Adams', 'Mayor of New York City', 'Democratic', 'supportive', 5.00, 2900.00),
+('Chuck Schumer', 'U.S. Senate', 'Democratic', 'supportive', 5.00, 2900.00),
+('Kirsten Gillibrand', 'U.S. Senate', 'Democratic', 'supportive', 5.00, 2900.00),
+('Alexandria Ocasio-Cortez', 'U.S. House - NY-14', 'Democratic', 'supportive', 5.00, 2900.00),
+('Jerrold Nadler', 'U.S. House - NY-12', 'Democratic', 'supportive', 5.00, 2900.00);

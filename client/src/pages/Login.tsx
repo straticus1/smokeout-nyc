@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login: React.FC = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -23,14 +26,10 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // TODO: Implement actual login API call
-      console.log('Login attempt:', formData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, just show success
-      alert('Login functionality will be implemented with backend integration');
+      const success = await login(formData.email, formData.password);
+      if (success) {
+        navigate('/map'); // Redirect to main map page after successful login
+      }
     } catch (error) {
       setError('Login failed. Please try again.');
     } finally {

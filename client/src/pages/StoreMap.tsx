@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UniversalMap, MapProviderComponent, Store, MapLocation } from '../components/Map';
 import { geocodingService } from '../services/geocoding';
+import PoliceDistanceIndicator from '../components/PoliceDistanceIndicator';
 
 const StoreMap: React.FC = () => {
   const [stores, setStores] = useState<Store[]>([]);
@@ -167,6 +168,15 @@ const StoreMap: React.FC = () => {
                           {store.phone}
                         </p>
                       )}
+                      
+                      {/* Police Distance Indicator */}
+                      <div className="mt-2">
+                        <PoliceDistanceIndicator 
+                          latitude={store.latitude} 
+                          longitude={store.longitude}
+                          showDetails={false}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -197,6 +207,27 @@ const StoreMap: React.FC = () => {
                   <div className="flex items-center">
                     <div className="w-4 h-4 bg-gray-500 rounded-full mr-3"></div>
                     <span className="text-sm text-gray-700">Unknown Status</span>
+                  </div>
+                  
+                  {/* Police Distance Legend */}
+                  <hr className="my-3" />
+                  <div className="text-xs font-semibold text-gray-900 mb-2">Police Station Proximity</div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-red-600 bg-red-50 border border-red-200 mr-2">⚠️</span>
+                      <span className="text-gray-600">High Risk (Close)</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-yellow-600 bg-yellow-50 border border-yellow-200 mr-2">📍</span>
+                      <span className="text-gray-600">Medium Risk</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-green-600 bg-green-50 border border-green-200 mr-2">✅</span>
+                      <span className="text-gray-600">Low Risk (Far)</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Distance to nearest NYPD station. Closer proximity may indicate higher enforcement activity.
                   </div>
                 </div>
               </div>

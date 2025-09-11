@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 const Profile: React.FC = () => {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    phone: '(212) 555-0123',
-    bio: 'Cannabis enthusiast and community advocate helping track smoke shop closures in NYC.'
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    bio: ''
   });
+
+  // Load user data when component mounts
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        bio: user.bio || ''
+      });
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -18,11 +35,31 @@ const Profile: React.FC = () => {
     }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement actual profile update API call
-    console.log('Profile update:', formData);
-    setIsEditing(false);
-    alert('Profile functionality will be implemented with backend integration');
+  const handleSave = async () => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('session_token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        toast.success('Profile updated successfully!');
+        setIsEditing(false);
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to update profile');
+      }
+    } catch (error) {
+      toast.error('Failed to update profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
