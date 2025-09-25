@@ -37,8 +37,18 @@ class Database {
         $this->conn = null;
 
         try {
-            $dsn = "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4";
-            $this->conn = new PDO($dsn, $this->username, $this->password);
+            // Use SQLite for development if MySQL is not available
+            $use_sqlite = $_ENV['USE_SQLITE'] ?? false;
+            
+            if ($use_sqlite || ($this->host === 'localhost' && !$this->isDatabaseServerRunning())) {
+                $db_file = __DIR__ . '/../database/smokeout_nyc.db';
+                $dsn = "sqlite:" . $db_file;
+                $this->conn = new PDO($dsn);
+            } else {
+                $dsn = "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4";
+                $this->conn = new PDO($dsn, $this->username, $this->password);
+            }
+            
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
@@ -48,6 +58,19 @@ class Database {
         }
 
         return $this->conn;
+    }
+    
+    private function isDatabaseServerRunning() {
+        try {
+            $connection = @fsockopen($this->host, 3306, $errno, $errstr, 1);
+            if ($connection) {
+                fclose($connection);
+                return true;
+            }
+            return false;
+        } catch (Exception $e) {
+            return false;
+        }
     }
 
     public function beginTransaction() {

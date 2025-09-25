@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/models/Donation.php';
 require_once __DIR__ . '/models/User.php';
 require_once __DIR__ . '/models/Politician.php';
+require_once __DIR__ . '/config/database.php';
 
 $donation = new Donation();
 $user = new User();

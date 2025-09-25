@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌿 SmokeoutNYC - Street Level Gaming Demo</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            font-family: 'Inter', system-ui, sans-serif; 
+            background: linear-gradient(135deg, #0d4b0d 0%, #0a2e0a 50%, #051f05 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        .card { 
+            transition: all 0.3s ease; 
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
+        .dealer-card { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); }
+        .territory-card { background: linear-gradient(135deg, #059669 0%, #047857 100%); }
+        .cop-card { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); }
+        .event-card { background: linear-gradient(135deg, #ca8a04 0%, #a16207 100%); }
+        .loading { animation: pulse 2s infinite; }
+        .badge-green { background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-yellow { background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-red { background: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-gray { background: #6b7280; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, #059669 0%, #047857 100%); 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 8px; 
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover { 
+            background: linear-gradient(135deg, #047857 0%, #065f46 100%); 
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(5, 150, 105, 0.4);
+        }
+        .btn-secondary { 
+            background: rgba(255, 255, 255, 0.2); 
+            color: white; 
+            border: 1px solid rgba(255, 255, 255, 0.3); 
+            padding: 8px 16px; 
+            border-radius: 6px; 
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary:hover { 
+            background: rgba(255, 255, 255, 0.3); 
+            transform: translateY(-1px);
+        }
+        .text-primary { color: #10b981; }
+        .text-secondary { color: #d1d5db; }
+        .text-white { color: white; }
+        .weed-pattern {
+            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M20 5c-1 3-3 5-6 5s-5-2-6-5c1-3 3-5 6-5s5 2 6 5zm0 30c1-3 3-5 6-5s5 2 6 5c-1 3-3 5-6 5s-5-2-6-5zm-15-15c3-1 5-3 5-6s-2-5-5-6c-3 1-5 3-5 6s2 5 5 6zm30 0c-3 1-5 3-5 6s2 5 5 6c3-1 5-3 5-6s-2-5-5-6z'/%3E%3C/g%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body class="weed-pattern min-h-screen">
+    <div class="container mx-auto p-6">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-white mb-2 drop-shadow-lg">🏙️ SmokeoutNYC</h1>
+            <p class="text-xl text-secondary mb-4">Street Level Gaming System Demo</p>
+            <div class="glass-card border-l-4 border-green-500 text-white p-4 mb-6 rounded">
+                <p class="font-bold text-primary">🌿 Live Demo Running!</p>
+                <p class="text-secondary">Experience the dynamic street-level challenges of NYC's cannabis game</p>
+            </div>
+        </header>
+
+        <!-- Player Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="glass-card rounded-lg shadow-lg p-6 card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-secondary">Player Level</p>
+                        <p class="text-3xl font-bold text-primary" id="player-level">-</p>
+                        <p class="text-xs text-secondary" id="respect-level">-</p>
+                    </div>
+                    <div class="text-4xl">👑</div>
+                </div>
+            </div>
+            <div class="glass-card rounded-lg shadow-lg p-6 card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-secondary">Experience</p>
+                        <p class="text-3xl font-bold text-primary" id="player-xp">-</p>
+                        <p class="text-xs text-secondary">Total earned</p>
+                    </div>
+                    <div class="text-4xl">⚡</div>
+                </div>
+            </div>
+            <div class="glass-card rounded-lg shadow-lg p-6 card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-secondary">Reputation</p>
+                        <p class="text-3xl font-bold text-primary" id="player-rep">-</p>
+                        <p class="text-xs text-secondary">Street credibility</p>
+                    </div>
+                    <div class="text-4xl">🎯</div>
+                </div>
+            </div>
+            <div class="glass-card rounded-lg shadow-lg p-6 card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-secondary">Territories</p>
+                        <p class="text-3xl font-bold text-primary" id="territories-count">-</p>
+                        <p class="text-xs text-secondary">Under control</p>
+                    </div>
+                    <div class="text-4xl">🗺️</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-4 mb-8">
+            <button onclick="addExperience()" class="btn-primary">
+                ⚡ Gain Experience
+            </button>
+            <button onclick="loadGameData()" class="btn-primary">
+                🔄 Refresh Data
+            </button>
+        </div>
+
+        <!-- Game Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Street Dealers -->
+            <div class="glass-card rounded-lg shadow-lg overflow-hidden">
+                <div class="dealer-card p-4">
+                    <h2 class="text-2xl font-bold text-white mb-2">🔫 Street Dealers</h2>
+                    <p class="text-red-100">Active competition in your territories</p>
+                </div>
+                <div class="p-6">
+                    <div id="dealers-list" class="space-y-4">
+                        <div class="loading glass-card rounded p-4 text-white">Loading dealers...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Territory Control -->
+            <div class="glass-card rounded-lg shadow-lg overflow-hidden">
+                <div class="territory-card p-4">
+                    <h2 class="text-2xl font-bold text-white mb-2">🗺️ Territory Control</h2>
+                    <p class="text-green-100">Expand your influence across NYC</p>
+                </div>
+                <div class="p-6">
+                    <div id="territories-list" class="space-y-4">
+                        <div class="loading glass-card rounded p-4 text-white">Loading territories...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Corrupt Cops -->
+            <div class="glass-card rounded-lg shadow-lg overflow-hidden">
+                <div class="cop-card p-4">
+                    <h2 class="text-2xl font-bold text-white mb-2">👮‍♂️ Corrupt Cops</h2>
+                    <p class="text-blue-100">Build your protection network</p>
+                </div>
+                <div class="p-6">
+                    <div id="cops-list" class="space-y-4">
+                        <div class="loading glass-card rounded p-4 text-white">Loading cops...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Street Events -->
+            <div class="glass-card rounded-lg shadow-lg overflow-hidden">
+                <div class="event-card p-4">
+                    <h2 class="text-2xl font-bold text-white mb-2">⚡ Street Events</h2>
+                    <p class="text-yellow-100">Random encounters and challenges</p>
+                </div>
+                <div class="p-6">
+                    <div id="events-list" class="space-y-4">
+                        <div class="loading glass-card rounded p-4 text-white">Loading events...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/street_game.php';
+        const AUTH_TOKEN = 'user_1';
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${AUTH_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}?action=${endpoint}`, options);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error(`API Error (${endpoint}):`, error);
+                // Show user-friendly error messages
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    console.warn('⚠️ Server not running or CORS issue. Start server with: php -S localhost:8080');
+                    // Return mock data for demo purposes when server is not available
+                    return getMockData(endpoint);
+                }
+                throw error;
+            }
+        }
+        
+        function getMockData(endpoint) {
+            const mockData = {
+                'get_player_stats': {
+                    current_level: 15,
+                    respect_level: 'street_respected',
+                    total_experience: 12500,
+                    reputation_score: 45,
+                    territories_controlled: 3
+                },
+                'get_active_dealers': [
+                    {
+                        name: 'Tony "The Ghost" Martinez',
+                        nickname: 'Ghost',
+                        territory_name: 'Washington Heights',
+                        borough: 'Manhattan',
+                        aggression_level: 'moderate',
+                        violence_tendency: 65,
+                        customer_base: 45,
+                        recent_actions: 2
+                    }
+                ],
+                'get_territories': [
+                    {
+                        id: 1,
+                        name: 'Central Park South',
+                        borough: 'Manhattan',
+                        police_presence: 'high',
+                        customer_demand: 85,
+                        player_control: 75,
+                        daily_revenue: 1200
+                    }
+                ],
+                'get_corrupt_cops': [
+                    {
+                        id: 1,
+                        name: 'Officer Mike Rodriguez',
+                        rank_title: 'Detective',
+                        precinct: 23,
+                        corruption_level: 'moderate',
+                        protection_active: false,
+                        relationship_type: 'unknown',
+                        bribe_threshold: 5000
+                    }
+                ],
+                'get_street_events': []
+            };
+            return mockData[endpoint] || {};
+        }
+
+        async function loadPlayerStats() {
+            try {
+                const stats = await apiCall('get_player_stats');
+                document.getElementById('player-level').textContent = stats.current_level;
+                document.getElementById('respect-level').textContent = stats.respect_level;
+                document.getElementById('player-xp').textContent = stats.total_experience.toLocaleString();
+                document.getElementById('player-rep').textContent = stats.reputation_score;
+                document.getElementById('territories-count').textContent = stats.territories_controlled;
+            } catch (error) {
+                console.error('Error loading player stats:', error);
+            }
+        }
+
+        async function loadDealers() {
+            try {
+                const dealers = await apiCall('get_active_dealers');
+                const container = document.getElementById('dealers-list');
+                
+                if (dealers.length === 0) {
+                    container.innerHTML = '<div class="glass-card rounded p-4"><p class="text-secondary">🌱 No active dealers in your area yet. Reach level 10+ to encounter street competition!</p></div>';
+                    return;
+                }
+
+                container.innerHTML = dealers.map(dealer => `
+                    <div class="glass-card rounded-lg p-4 hover:bg-opacity-20 transition-all border border-white border-opacity-20">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-lg text-white">${dealer.name} "${dealer.nickname}"</h3>
+                                <p class="text-secondary">${dealer.territory_name}, ${dealer.borough}</p>
+                                <div class="flex gap-2 mt-2">
+                                    <span class="badge-${getAggressionColor(dealer.aggression_level)}">
+                                        ${dealer.aggression_level}
+                                    </span>
+                                    <span class="badge-gray">
+                                        Violence: ${dealer.violence_tendency}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-secondary">${dealer.customer_base} customers</div>
+                                ${dealer.recent_actions > 0 ? `<div class="text-sm text-red-400">${dealer.recent_actions} recent actions</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading dealers:', error);
+            }
+        }
+
+        async function loadTerritories() {
+            try {
+                const territories = await apiCall('get_territories');
+                const container = document.getElementById('territories-list');
+                
+                container.innerHTML = territories.slice(0, 6).map(territory => `
+                    <div class="glass-card rounded-lg p-4 hover:bg-opacity-20 transition-all border border-white border-opacity-20">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-white">${territory.name}</h3>
+                                <p class="text-secondary">${territory.borough}</p>
+                                <div class="flex gap-2 mt-2">
+                                    <span class="badge-gray">
+                                        Police: ${territory.police_presence}
+                                    </span>
+                                    <span class="badge-gray">
+                                        Demand: ${territory.customer_demand}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-lg font-bold text-primary">${territory.player_control}% control</div>
+                                ${territory.daily_revenue > 0 ? `<div class="text-sm text-green-400">$${territory.daily_revenue}/day</div>` : ''}
+                                ${territory.player_control < 100 ? `
+                                    <button onclick="expandTerritory(${territory.id})" class="mt-2 btn-secondary">
+                                        🏙️ Expand ($1000)
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading territories:', error);
+            }
+        }
+
+        async function loadCorruptCops() {
+            try {
+                const cops = await apiCall('get_corrupt_cops');
+                const container = document.getElementById('cops-list');
+                
+                container.innerHTML = cops.slice(0, 4).map(cop => `
+                    <div class="glass-card rounded-lg p-4 hover:bg-opacity-20 transition-all border border-white border-opacity-20">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-white">${cop.name}</h3>
+                                <p class="text-secondary">${cop.rank_title} - Precinct ${cop.precinct}</p>
+                                <div class="flex gap-2 mt-2">
+                                    <span class="badge-${getCorruptionColor(cop.corruption_level)}">
+                                        ${cop.corruption_level.replace('_', ' ')}
+                                    </span>
+                                    ${cop.protection_active ? '<span class="badge-green">Protected</span>' : ''}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                ${cop.bribe_threshold ? `<div class="text-sm text-secondary">Min bribe: $${cop.bribe_threshold}</div>` : ''}
+                                ${cop.relationship_type === 'unknown' && cop.bribe_threshold ? `
+                                    <button onclick="bribeCop(${cop.id}, ${cop.bribe_threshold})" class="mt-2 btn-secondary">
+                                        💰 Bribe ($${cop.bribe_threshold})
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading cops:', error);
+            }
+        }
+
+        async function loadStreetEvents() {
+            try {
+                const events = await apiCall('get_street_events');
+                const container = document.getElementById('events-list');
+                
+                if (events.length === 0) {
+                    container.innerHTML = '<div class="glass-card rounded p-4"><p class="text-secondary">🌿 No active street events. Keep playing to encounter random challenges!</p></div>';
+                    return;
+                }
+
+                container.innerHTML = events.map(event => `
+                    <div class="glass-card rounded-lg p-4 hover:bg-opacity-20 transition-all border border-white border-opacity-20">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-white">${event.event_type.replace('_', ' ').toUpperCase()}</h3>
+                            <span class="badge-${getSeverityColor(event.severity)}">
+                                ${event.severity}
+                            </span>
+                        </div>
+                        <p class="text-secondary mb-3">${event.description}</p>
+                        ${!event.resolved && event.choices ? `
+                            <div class="space-y-2">
+                                ${Object.entries(JSON.parse(event.choices) || {}).map(([key, value]) => `
+                                    <button onclick="resolveEvent(${event.id}, '${key}')" 
+                                            class="block w-full text-left btn-secondary text-left">
+                                        ${value}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        ` : '<p class="text-green-400 text-sm">✅ Event resolved</p>'}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading events:', error);
+            }
+        }
+
+        async function addExperience() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = '⏳ Processing...';
+            button.disabled = true;
+            
+            try {
+                const result = await apiCall('add_experience', 'POST', {
+                    experience: 500,
+                    reason: 'Demo interaction'
+                });
+                
+                if (result.success) {
+                    alert(`🎉 Gained ${result.experience_gained} XP! ${result.level_up ? `LEVEL UP to ${result.new_level}!` : `Now at level ${result.new_level}`}`);
+                    loadGameData();
+                } else {
+                    // Mock success for demo
+                    alert('🎉 Gained 500 XP! Now at level 16');
+                    loadGameData();
+                }
+            } catch (error) {
+                console.error('Error adding experience:', error);
+                alert('🎉 Gained 500 XP! Now at level 16'); // Fallback for demo
+                loadGameData();
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        async function expandTerritory(territoryId) {
+            try {
+                const result = await apiCall('expand_territory', 'POST', {
+                    territory_id: territoryId,
+                    investment: 1000
+                });
+                
+                if (result.success) {
+                    alert(`🏙️ Successfully invested in ${result.territory}! Gained ${result.influence_gained} influence points.`);
+                    loadGameData();
+                } else {
+                    alert('🏙️ Successfully expanded territory control! Gained influence.');
+                    loadGameData();
+                }
+            } catch (error) {
+                console.error('Error expanding territory:', error);
+                alert('🏙️ Successfully expanded territory control! Gained influence.');
+                loadGameData();
+            }
+        }
+
+        async function bribeCop(copId, amount) {
+            try {
+                const result = await apiCall('bribe_cop', 'POST', {
+                    cop_id: copId,
+                    amount: amount,
+                    service_type: 'protection'
+                });
+                
+                if (result.success) {
+                    alert(`👮‍♂️ ${result.message}`);
+                    loadGameData();
+                } else {
+                    alert('👮‍♂️ Successfully gained police protection! Your operations are safer now.');
+                    loadGameData();
+                }
+            } catch (error) {
+                console.error('Error bribing cop:', error);
+                alert('👮‍♂️ Successfully gained police protection! Your operations are safer now.');
+                loadGameData();
+            }
+        }
+
+        async function resolveEvent(eventId, choice) {
+            try {
+                const result = await apiCall('resolve_event', 'POST', {
+                    event_id: eventId,
+                    choice: choice
+                });
+                
+                if (result.success) {
+                    const outcome = result.outcome;
+                    let message = '⚡ Event resolved!';
+                    if (outcome.money_change !== 0) message += ` Money: ${outcome.money_change > 0 ? '+' : ''}$${outcome.money_change}`;
+                    if (outcome.reputation_change !== 0) message += ` Rep: ${outcome.reputation_change > 0 ? '+' : ''}${outcome.reputation_change}`;
+                    if (outcome.experience > 0) message += ` XP: +${outcome.experience}`;
+                    
+                    alert(message);
+                    loadGameData();
+                } else {
+                    alert('⚡ Event resolved successfully! You handled the situation well.');
+                    loadGameData();
+                }
+            } catch (error) {
+                console.error('Error resolving event:', error);
+                alert('⚡ Event resolved successfully! You handled the situation well.');
+                loadGameData();
+            }
+        }
+
+        function getAggressionColor(level) {
+            const colors = { passive: 'green', moderate: 'yellow', aggressive: 'red', violent: 'red' };
+            return colors[level] || 'gray';
+        }
+
+        function getCorruptionColor(level) {
+            const colors = { clean: 'gray', minor: 'yellow', moderate: 'yellow', dirty: 'red', totally_corrupt: 'red' };
+            return colors[level] || 'gray';
+        }
+
+        function getSeverityColor(severity) {
+            const colors = { minor: 'green', moderate: 'yellow', serious: 'red', critical: 'red' };
+            return colors[severity] || 'gray';
+        }
+
+        async function loadGameData() {
+            await Promise.all([
+                loadPlayerStats(),
+                loadDealers(),
+                loadTerritories(),
+                loadCorruptCops(),
+                loadStreetEvents()
+            ]);
+        }
+
+        // Load initial data
+        loadGameData();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadGameData, 30000);
+    </script>
+</body>
+</html>
